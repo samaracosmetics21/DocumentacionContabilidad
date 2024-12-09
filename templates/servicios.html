@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Servicios</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar { margin-bottom: 2rem; }
+        .container { max-width: 1200px; }
+        table { background-color: #fff; border-radius: 8px; overflow: hidden; }
+        table thead { background-color: #343a40; color: #fff; }
+        table th, table td { text-align: center; vertical-align: middle; }
+        h1 { color: #343a40; text-align: center; margin-bottom: 1.5rem; }
+        .btn-success { font-size: 0.9rem; }
+        .alert { text-align: center; }
+    </style>
+</head>
+<body>
+    <!-- Navegación -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">Sistema de Gestión</a>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Facturas</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/grupos">Grupos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/usuarios">Usuarios</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/servicios">Servicios</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido Principal -->
+    <div class="container">
+        <h1>Facturas Pendientes en Servicios</h1>
+
+        {% if facturas %}
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>NIT</th>
+                    <th>Número de Factura</th>
+                    <th>Fecha</th>
+                    <th>Clasificación</th>
+                    <th>Archivo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for factura in facturas %}
+                <tr>
+                    <td>{{ factura[0] }}</td>
+                    <td>{{ factura[1] }}</td>
+                    <td>{{ factura[2] }}</td>
+                    <td>{{ factura[3] }}</td>
+                    <td>{{ factura[4] }}</td>
+                    <td>
+                        <a href="{{ url_for('static', filename= 'uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
+                    </td>
+                    <td>
+                        {% if factura[6] == 'Aprobado' %}
+                            <span class="badge bg-success">Aprobado</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Pendiente</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="/servicios" onsubmit="return validarFormulario();">
+                            <input type="hidden" name="usuario_id" id="usuario_id" value="{{ session['user_id'] }}">
+                            <input type="hidden" name="factura_id" value="{{ factura[0] }}">
+                            <div class="mb-3">
+                                <select class="form-select" name="usuario_asignado" required>
+                                    <option value="">Seleccionar Usuario</option>
+                                    {% for usuario in usuarios %}
+                                    <option value="{{ usuario[0] }}">{{ usuario[1] }} {{ usuario[2] }} - {{ usuario[3] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success btn-sm">Asignar y Aprobar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-secondary">
+            <strong>No hay facturas pendientes en Servicios.</strong>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function validarFormulario() {
+            const usuarioId = document.getElementById('usuario_id').value;
+            if (!usuarioId) {
+                alert('Error: El ID del usuario no está definido. Por favor, recargue la página.');
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>

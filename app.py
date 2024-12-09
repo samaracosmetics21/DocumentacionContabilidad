@@ -320,25 +320,45 @@ def gestion_bodega():
 @app.route("/compras", methods=["GET", "POST"])
 @login_required
 def gestion_compras():
+    # Conexión a la base de datos PostgreSQL
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
+    print("Conexión exitosa a PostgreSQL")
 
     try:
         if request.method == "POST":
             # Obtener datos del formulario
             usuario_id = request.form.get("usuario_id")
             factura_id = request.form.get("factura_id")
+            remision = request.form.get("remision")
+            archivo_remision = request.files.get("archivo_remision")
 
-            # Validar usuario_id y factura_id
+            # Log de datos recibidos
+            print(f"Datos recibidos: usuario_id={usuario_id}, factura_id={factura_id}, remision={remision}, archivo_remision={archivo_remision.filename if archivo_remision else 'No file'}")
+
+            # Validar campos
             if not usuario_id or not usuario_id.isdigit():
+                print("Error: El ID del usuario no es válido.")
                 flash("El ID del usuario no es válido.", "error")
                 return redirect("/compras")
 
             if not factura_id or not factura_id.isdigit():
+                print("Error: El ID de la factura no es válido.")
                 flash("El ID de la factura no es válido.", "error")
                 return redirect("/compras")
 
+            if not remision or not remision.isalnum():
+                print("Error: La remisión debe ser un valor alfanumérico.")
+                flash("La remisión debe ser un valor alfanumérico.", "error")
+                return redirect("/compras")
+
+            if not archivo_remision or not archivo_remision.filename:
+                print("Error: No se ha subido un archivo de remisión.")
+                flash("Debes subir un archivo de remisión.", "error")
+                return redirect("/compras")
+
             # Validar si el usuario pertenece al grupo de aprobadores de compras
+            print("Consultando si el usuario pertenece al grupo de Compras...")
             cursor.execute("""
                 SELECT g.grupo 
                 FROM usuarios u 
@@ -346,35 +366,86 @@ def gestion_compras():
                 WHERE u.id = %s AND g.grupo = 'Compras'
             """, (usuario_id,))
             grupo = cursor.fetchone()
+            print(f"Resultado de grupo: {grupo}")
 
             if not grupo:
+                print("Error: El usuario no pertenece al grupo de Compras.")
                 flash("No tienes permisos para aprobar facturas en Compras", "error")
                 return redirect("/compras")
 
-            # Aprobar la factura, registrar la hora de aprobación y el usuario que aprobó
+            # Consultar información de la factura
+            print("Consultando información de la factura...")
+            cursor.execute("""
+                SELECT nit, fecha_seleccionada, clasificacion
+                FROM facturas
+                WHERE id = %s
+            """, (factura_id,))
+            factura_info = cursor.fetchone()
+            print(f"Información de factura: {factura_info}")
+
+            if not factura_info:
+                print("Error: Factura no encontrada.")
+                flash("Factura no encontrada.", "error")
+                return redirect("/compras")
+
+            nit, fecha_seleccionada, clasificacion = factura_info
+            # Convertir fecha_seleccionada a cadena antes de usar replace
+            fecha_directorio = str(fecha_seleccionada).replace("-", "")  # Formato YYYYMMDD
+            clasificacion_texto = "Facturas" if clasificacion == "Facturas" else "Servicios"
+            print(f"Datos procesados: nit={nit}, fecha={fecha_seleccionada}, clasificación={clasificacion_texto}")
+
+            # Crear directorio para guardar el archivo
+            ruta_directorio = os.path.join(
+                app.config["UPLOAD_FOLDER"], clasificacion_texto, nit, fecha_directorio
+            )
+            os.makedirs(ruta_directorio, exist_ok=True)
+            print(f"Directorio creado o existente: {ruta_directorio}")
+
+            # Guardar el archivo
+            archivo_path = os.path.join(ruta_directorio, archivo_remision.filename)
+            archivo_remision.save(archivo_path)
+            print(f"Archivo guardado en: {archivo_path}")
+
+            # Calcular ruta relativa para almacenamiento en la base de datos
+            ruta_relativa = os.path.relpath(archivo_path, app.config["UPLOAD_FOLDER"])
+            ruta_relativa = ruta_relativa.replace("static/", "")  # Eliminar prefijo 'static/'
+            print(f"Ruta relativa del archivo: {ruta_relativa}")
+
+            # Aprobar la factura y registrar información
             try:
                 hora_aprobacion_compras = datetime.now()
+                print("Aprobando factura en la base de datos...")
                 cursor.execute("""
                     UPDATE facturas
-                    SET estado_compras = 'Aprobado', hora_aprobacion_compras = %s, aprobado_compras = %s
+                    SET estado_compras = 'Aprobado', 
+                        hora_aprobacion_compras = %s, 
+                        aprobado_compras = %s,
+                        remision = %s,
+                        archivo_remision = %s
                     WHERE id = %s
-                """, (hora_aprobacion_compras, usuario_id, factura_id))
+                """, (hora_aprobacion_compras, usuario_id, remision, ruta_relativa, factura_id))
                 conn_pg.commit()
+                print("Factura aprobada exitosamente.")
                 flash("Factura aprobada exitosamente en Compras", "success")
             except Exception as e:
                 conn_pg.rollback()
+                print(f"Error al aprobar la factura: {e}")
                 flash(f"Error aprobando factura en Compras: {str(e)}", "error")
+                return redirect("/compras")
 
         # Consultar facturas pendientes en compras
+        print("Consultando facturas pendientes en Compras...")
         cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_compras 
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_compras, hora_aprobacion_compras
             FROM facturas
-            WHERE clasificacion = 'Facturas' AND estado = 'Aprobado'
+            WHERE clasificacion = 'Facturas' AND estado_compras = 'Pendiente'
             ORDER BY fecha_seleccionada ASC
         """)
         facturas = cursor.fetchall()
+        print(f"Facturas pendientes: {len(facturas)} facturas encontradas")
 
     except Exception as e:
+        print(f"Error general en gestión_compras: {e}")
         flash(f"Error en la gestión de compras: {str(e)}", "error")
         facturas = []
 
@@ -383,8 +454,11 @@ def gestion_compras():
             cursor.close()
         if conn_pg:
             conn_pg.close()
+            print("Conexión cerrada")
 
+    # Renderizar el HTML
     return render_template("compras.html", facturas=facturas)
+
 
 
 
@@ -413,6 +487,112 @@ def login():
             flash(f"Error al iniciar sesión: {str(e)}", "error")
 
     return render_template("login.html")
+
+@app.route("/servicios", methods=["GET", "POST"])
+@login_required
+def gestion_servicios():
+    conn_pg = postgres_connection()
+    cursor = conn_pg.cursor()
+
+    try:
+        if request.method == "POST":
+            # Obtener datos del formulario
+            usuario_id = request.form.get("usuario_id")
+            factura_id = request.form.get("factura_id")
+            usuario_asignado = request.form.get("usuario_asignado")  # Nuevo campo para asignar el usuario
+
+            # Imprimir valores obtenidos para verificar
+            print("Datos recibidos:")
+            print(f"usuario_id: {usuario_id}")
+            print(f"factura_id: {factura_id}")
+            print(f"usuario_asignado: {usuario_asignado}")
+
+            # Validar usuario_id y factura_id
+            if not usuario_id or not usuario_id.isdigit():
+                flash("El ID del usuario no es válido.", "error")
+                print("Error: usuario_id no es válido.")
+                return redirect("/servicios")
+
+            if not factura_id or not factura_id.isdigit():
+                flash("El ID de la factura no es válido.", "error")
+                print("Error: factura_id no es válido.")
+                return redirect("/servicios")
+
+            if not usuario_asignado or not usuario_asignado.isdigit():
+                flash("El ID del usuario asignado no es válido.", "error")
+                print("Error: usuario_asignado no es válido.")
+                return redirect("/servicios")
+
+            # Validar si el usuario pertenece al grupo de Contabilidad
+            cursor.execute("""
+                SELECT g.grupo 
+                FROM usuarios u 
+                INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+                WHERE u.id = %s AND g.grupo = 'Contabilidad'
+            """, (usuario_id,))
+            grupo = cursor.fetchone()
+
+            print("Grupo obtenido:", grupo)
+
+            if not grupo:
+                flash("No tienes permisos para asignar facturas en Servicios.", "error")
+                print("Error: usuario no pertenece al grupo de Contabilidad.")
+                return redirect("/servicios")
+
+            # Aprobar la factura y asignar al usuario
+            try:
+                hora_aprobacion = datetime.now()
+                print("Hora de aprobación:", hora_aprobacion)
+
+                cursor.execute("""
+                    UPDATE facturas
+                    SET estado = 'Aprobado', 
+                        hora_aprobacion = %s, 
+                        aprobado_servicios = %s,
+                        usuario_asignado_servicios = %s
+                    WHERE id = %s
+                """, (hora_aprobacion, usuario_id, usuario_asignado, factura_id))
+                conn_pg.commit()
+                print("Factura actualizada exitosamente en la base de datos.")
+                flash("Factura asignada y aprobada exitosamente", "success")
+            except Exception as e:
+                conn_pg.rollback()
+                print("Error durante la actualización de la factura:", e)
+                flash(f"Error aprobando y asignando factura: {str(e)}", "error")
+
+        # Consultar facturas pendientes
+        cursor.execute("""
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado 
+            FROM facturas
+            WHERE clasificacion = 'Servicios' AND estado = 'Pendiente'
+            ORDER BY fecha_seleccionada ASC
+        """)
+        facturas = cursor.fetchall()
+        print("Facturas pendientes obtenidas:", facturas)
+
+        # Consultar usuarios disponibles para asignar
+        cursor.execute("""
+            SELECT id, nombre, apellido, usuario, correo
+            FROM usuarios
+        """)
+        usuarios = cursor.fetchall()
+        print("Usuarios disponibles para asignar:", usuarios)
+
+    except Exception as e:
+        print("Error general:", e)
+        flash(f"Error en la gestión de servicios: {str(e)}", "error")
+        facturas = []
+        usuarios = []
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn_pg:
+            conn_pg.close()
+
+    return render_template("servicios.html", facturas=facturas, usuarios=usuarios)
+
+
 
 
 @app.route("/logout")
