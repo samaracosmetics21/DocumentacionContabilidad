@@ -6,6 +6,8 @@ from werkzeug.security import generate_password_hash
 from flask import session  
 from werkzeug.security import check_password_hash
 from functools import wraps
+from flask_login import current_user
+
 
 app = Flask(__name__)
 app.secret_key = "secret_key_example"
@@ -591,6 +593,456 @@ def gestion_servicios():
             conn_pg.close()
 
     return render_template("servicios.html", facturas=facturas, usuarios=usuarios)
+
+
+@app.route("/asignaciones", methods=["GET", "POST"])
+@login_required
+def gestion_asignaciones():
+    print("Iniciando gestión de asignaciones...")
+
+    conn_pg = postgres_connection()
+    print("Conexión a la base de datos establecida.")
+    cursor = conn_pg.cursor()
+
+    # Obtener el ID del usuario autenticado desde la sesións
+    usuario_actual_id = session.get("user_id")
+    print(f"Usuario autenticado: {usuario_actual_id}")
+
+    if not usuario_actual_id:
+        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
+        print("Error: sesión no válida o usuario no autenticado.")
+        return redirect(url_for("login"))
+
+    try:
+        if request.method == "POST":
+            print("Método POST recibido.")
+
+            # Obtener datos del formulario
+            factura_id = request.form.get("factura_id")
+            print(f"Factura recibida para aprobación: {factura_id}")
+
+            if not factura_id or not factura_id.isdigit():
+                flash("El ID de la factura no es válido.", "error")
+                print("Error: factura_id no es válido.")
+                return redirect("/asignaciones")
+
+            # Validar que la factura pertenece al usuario actual y está pendiente
+            print("Validando si la factura pertenece al usuario actual...")
+            cursor.execute("""
+                SELECT id, estado_usuario_asignado
+                FROM facturas
+                WHERE id = %s AND usuario_asignado_servicios = %s
+            """, (factura_id, usuario_actual_id))
+            factura = cursor.fetchone()
+            print(f"Resultado de la validación de factura: {factura}")
+
+            if not factura:
+                flash("No tienes permiso para aprobar esta factura o ya ha sido aprobada.", "error")
+                print("Error: factura no encontrada o no pertenece al usuario.")
+                return redirect("/asignaciones")
+
+            if factura[1] == 'Aprobado':
+                flash("La factura ya ha sido aprobada anteriormente.", "warning")
+                print("Advertencia: la factura ya estaba aprobada.")
+                return redirect("/asignaciones")
+
+            # Aprobar la factura y registrar la hora de aprobación
+            try:
+                hora_actual = datetime.now()
+                print(f"Hora de aprobación: {hora_actual}")
+
+                cursor.execute("""
+                    UPDATE facturas
+                    SET estado_usuario_asignado = 'Aprobado',
+                        hora_aprobacion_asignado = %s
+                    WHERE id = %s AND usuario_asignado_servicios = %s
+                """, (hora_actual, factura_id, usuario_actual_id))
+                conn_pg.commit()
+                print(f"Factura aprobada. Filas afectadas: {cursor.rowcount}")
+
+                if cursor.rowcount == 0:
+                    flash("No se pudo actualizar la factura. Verifica tus permisos.", "error")
+                    print("Error: actualización de factura fallida, fila no afectada.")
+                else:
+                    flash("Factura aprobada exitosamente.", "success")
+                    print("Factura aprobada con éxito.")
+            except Exception as e:
+                conn_pg.rollback()
+                print(f"Error durante la aprobación de la factura: {e}")
+                flash(f"Error aprobando factura: {str(e)}", "error")
+
+        # Consultar facturas asignadas al usuario actual
+        print("Consultando facturas asignadas al usuario actual...")
+        cursor.execute("""
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_usuario_asignado, estado_usuario_asignado, hora_aprobacion_asignado
+            FROM facturas
+            WHERE usuario_asignado_servicios = %s
+            ORDER BY fecha_seleccionada ASC
+        """, (usuario_actual_id,))
+        facturas_asignadas = cursor.fetchall()
+        print(f"Facturas asignadas obtenidas: {facturas_asignadas}")
+
+    except Exception as e:
+        print(f"Error general en /asignaciones: {e}")
+        flash(f"Error al gestionar asignaciones: {str(e)}", "error")
+        facturas_asignadas = []
+
+    finally:
+        if cursor:
+            cursor.close()
+            print("Cursor de base de datos cerrado.")
+        if conn_pg:
+            conn_pg.close()
+            print("Conexión a la base de datos cerrada.")
+
+    print("Renderizando la plantilla asignaciones.html...")
+    return render_template("asignaciones.html", facturas=facturas_asignadas)
+
+
+@app.route("/pago_servicios", methods=["GET", "POST"])
+def pago_servicios():
+    print("Iniciando vista de pago de servicios...")
+
+    conn_pg = postgres_connection()
+    cursor = conn_pg.cursor()
+
+    # Obtener el ID del usuario autenticado desde la sesión
+    usuario_id = session.get("user_id")
+    print(f"Usuario autenticado: {usuario_id}")
+
+    if not usuario_id:
+        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
+        print("Error: sesión no válida o usuario no autenticado.")
+        return redirect(url_for("login"))
+
+    try:
+        # Validar si el usuario pertenece al grupo de jefe_servicios
+        print("Validando grupo del usuario...")
+        cursor.execute("""
+            SELECT g.grupo 
+            FROM usuarios u 
+            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+            WHERE u.id = %s AND g.grupo = 'jefe_servicios'
+        """, (usuario_id,))
+        grupo = cursor.fetchone()
+        print(f"Resultado de validación de grupo: {grupo}")
+
+        if not grupo:
+            flash("No tienes permisos para acceder a esta funcionalidad.", "error")
+            print("Error: usuario no pertenece al grupo jefe_servicios.")
+            return redirect("/")
+
+        if request.method == "POST":
+            print("Método POST recibido.")
+            
+            # Obtener el ID de la factura a aprobar
+            factura_id = request.form.get("factura_id")
+            print(f"Factura para pago servicios: {factura_id}")
+
+            if not factura_id or not factura_id.isdigit():
+                flash("El ID de la factura no es válido.", "error")
+                print("Error: factura_id no es válido.")
+                return redirect("/pago_servicios")
+
+            # Validar que la factura está aprobada y lista para pago de servicios
+            print("Validando estado de la factura para pago de servicios...")
+            cursor.execute("""
+                SELECT id, pago_servicios
+                FROM facturas
+                WHERE id = %s AND estado_usuario_asignado = 'Aprobado'
+            """, (factura_id,))
+            factura = cursor.fetchone()
+            print(f"Resultado de la validación de factura: {factura}")
+
+            if not factura:
+                flash("No se encontró la factura o no está en estado Aprobado.", "error")
+                print("Error: factura no encontrada o no válida para pago de servicios.")
+                return redirect("/pago_servicios")
+
+            if factura[1] == 'Aprobado':
+                flash("La factura ya ha sido aprobada para pago de servicios.", "warning")
+                print("Advertencia: la factura ya está aprobada para pago de servicios.")
+                return redirect("/pago_servicios")
+
+            # Aprobar la factura para pago de servicios y registrar hora de aprobación
+            try:
+                hora_actual = datetime.now()
+                print(f"Hora de aprobación para pago servicios: {hora_actual}")
+
+                cursor.execute("""
+                    UPDATE facturas
+                    SET pago_servicios = 'Aprobado',
+                        hora_aprobacion_pago_servicio = %s
+                    WHERE id = %s
+                """, (hora_actual, factura_id))
+                conn_pg.commit()
+                print(f"Factura aprobada para pago servicios. Filas afectadas: {cursor.rowcount}")
+
+                if cursor.rowcount == 0:
+                    flash("No se pudo aprobar la factura para pago de servicios.", "error")
+                    print("Error: actualización fallida, fila no afectada.")
+                else:
+                    flash("Factura aprobada exitosamente para pago de servicios.", "success")
+                    print("Factura aprobada con éxito para pago de servicios.")
+            except Exception as e:
+                conn_pg.rollback()
+                print(f"Error durante la aprobación de la factura para pago servicios: {e}")
+                flash(f"Error aprobando factura para pago de servicios: {str(e)}", "error")
+
+        # Consultar facturas aprobadas y pendientes de pago de servicios
+        print("Consultando facturas aprobadas para pago de servicios...")
+        cursor.execute("""
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, pago_servicios, hora_aprobacion_pago_servicio
+            FROM facturas
+            WHERE estado_usuario_asignado = 'Aprobado'
+            ORDER BY fecha_seleccionada ASC
+        """)
+        facturas_aprobadas = cursor.fetchall()
+        print(f"Facturas aprobadas para pago de servicios obtenidas: {facturas_aprobadas}")
+
+    except Exception as e:
+        print(f"Error general en /pago_servicios: {e}")
+        flash(f"Error al gestionar pago de servicios: {str(e)}", "error")
+        facturas_aprobadas = []
+
+    finally:
+        if cursor:
+            cursor.close()
+            print("Cursor de base de datos cerrado.")
+        if conn_pg:
+            conn_pg.close()
+            print("Conexión a la base de datos cerrada.")
+
+    print("Renderizando la plantilla pago_servicios.html...")
+    return render_template("pago_servicios.html", facturas=facturas_aprobadas)
+
+#-------------Pago MP
+@app.route("/pago_mp", methods=["GET", "POST"])
+def pago_mp():
+    print("Iniciando vista de pago de MP...")
+
+    conn_pg = postgres_connection()
+    cursor = conn_pg.cursor()
+
+    # Obtener el ID del usuario autenticado desde la sesión
+    usuario_id = session.get("user_id")
+    print(f"Usuario autenticado: {usuario_id}")
+
+    if not usuario_id:
+        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
+        print("Error: sesión no válida o usuario no autenticado.")
+        return redirect(url_for("login"))
+
+    try:
+        # Validar si el usuario pertenece al grupo de jefe_servicios
+        print("Validando grupo del usuario...")
+        cursor.execute("""
+            SELECT g.grupo 
+            FROM usuarios u 
+            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+            WHERE u.id = %s AND g.grupo = 'jefe_mp'
+        """, (usuario_id,))
+        grupo = cursor.fetchone()
+        print(f"Resultado de validación de grupo: {grupo}")
+
+        if not grupo:
+            flash("No tienes permisos para acceder a esta funcionalidad.", "error")
+            print("Error: usuario no pertenece al grupo jefe_mp.")
+            return redirect("/")
+
+        if request.method == "POST":
+            print("Método POST recibido.")
+
+            # Obtener el ID de la factura a aprobar
+            factura_id = request.form.get("factura_id")
+            print(f"Factura para pago MP: {factura_id}")
+
+            if not factura_id or not factura_id.isdigit():
+                flash("El ID de la factura no es válido.", "error")
+                print("Error: factura_id no es válido.")
+                return redirect("/pago_mp")
+
+            # Validar que la factura está aprobada y lista para pago de servicios
+            print("Validando estado de la factura para pago de servicios...")
+            cursor.execute("""
+                SELECT id, pago_mp
+                FROM facturas
+                WHERE id = %s AND estado_compras = 'Aprobado'
+            """, (factura_id,))
+            factura = cursor.fetchone()
+            print(f"Resultado de la validación de factura: {factura}")
+
+            if not factura:
+                flash("No se encontró la factura o no está en estado Aprobado.", "error")
+                print("Error: factura no encontrada o no válida para pago de MP.")
+                return redirect("/pago_mp")
+
+            if factura[1] == 'Aprobado':
+                flash("La factura ya ha sido aprobada para pago de MP.", "warning")
+                print("Advertencia: la factura ya está aprobada para pago de MP.")
+                return redirect("/pago_mp")
+
+            # Aprobar la factura para pago de MP y registrar hora de aprobación
+            try:
+                hora_actual = datetime.now()
+                print(f"Hora de aprobación para pago MP: {hora_actual}")
+
+                cursor.execute("""
+                    UPDATE facturas
+                    SET pago_mp = 'Aprobado',
+                        hora_aprobacion_pago_mp = %s
+                    WHERE id = %s
+                """, (hora_actual, factura_id))
+                conn_pg.commit()
+                print(f"Factura aprobada para pago MP. Filas afectadas: {cursor.rowcount}")
+
+                if cursor.rowcount == 0:
+                    flash("No se pudo aprobar la factura para pago de MP.", "error")
+                    print("Error: actualización fallida, fila no afectada.")
+                else:
+                    flash("Factura aprobada exitosamente para pago de MP.", "success")
+                    print("Factura aprobada con éxito para pago de MP.")
+            except Exception as e:
+                conn_pg.rollback()
+                print(f"Error durante la aprobación de la factura para pago MP: {e}")
+                flash(f"Error aprobando factura para pago de MP: {str(e)}", "error")
+
+        # Consultar facturas aprobadas y pendientes de pago de MP
+        print("Consultando facturas aprobadas para pago de MP...")
+        cursor.execute("""
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, pago_mp, hora_aprobacion_pago_mp
+            FROM facturas
+            WHERE estado_compras = 'Aprobado'
+            ORDER BY fecha_seleccionada ASC
+        """)
+        facturas_aprobadas = cursor.fetchall()
+        print(f"Facturas aprobadas para pago de MP obtenidas: {facturas_aprobadas}")
+
+    except Exception as e:
+        print(f"Error general en /pago_mp: {e}")
+        flash(f"Error al gestionar pago de MP: {str(e)}", "error")
+        facturas_aprobadas = []
+
+    finally:
+        if cursor:
+            cursor.close()
+            print("Cursor de base de datos cerrado.")
+        if conn_pg:
+            conn_pg.close()
+            print("Conexión a la base de datos cerrada.")
+
+    print("Renderizando la plantilla pago_mp.html...")
+    return render_template("pago_mp.html", facturas=facturas_aprobadas)
+
+
+@app.route("/gestion_final", methods=["GET", "POST"])
+def gestion_final():
+    print("Iniciando vista de gestión final...")
+
+    conn_pg = postgres_connection()
+    cursor = conn_pg.cursor()
+
+    # Obtener el ID del usuario autenticado desde la sesión
+    usuario_id = session.get("user_id")
+    print(f"Usuario autenticado: {usuario_id}")
+
+    if not usuario_id:
+        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
+        print("Error: sesión no válida o usuario no autenticado.")
+        return redirect(url_for("login"))
+
+    try:
+        # Validar si el usuario pertenece al grupo de contabilidad
+        print("Validando grupo del usuario...")
+        cursor.execute("""
+            SELECT g.grupo 
+            FROM usuarios u
+            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+            WHERE u.id = %s AND g.grupo = 'Contabilidad'
+        """, (usuario_id,))
+        grupo = cursor.fetchone()
+        print(f"Resultado de validación de grupo: {grupo}")
+
+        if not grupo:
+            flash("No tienes permisos para acceder a esta funcionalidad.", "error")
+            print("Error: usuario no pertenece al grupo Contabilidad.")
+            return redirect("/")
+
+        if request.method == "POST":
+            print("Método POST recibido.")
+
+            # Obtener los valores del formulario
+            factura_id = request.form.get("factura_id")
+            numero_ofimatica = request.form.get("numero_ofimatica")  # Obligatorio
+            retenciones = request.form.get("retenciones")  # Opcional
+            valor_pagar = request.form.get("valor_pagar")  # Opcional
+            abonos = request.form.get("abonos")  # Opcional
+            saldos = request.form.get("saldos")  # Opcional
+            clasificacion_final = request.form.get("clasificacion_final")  # Obligatorio
+
+            print(f"Factura ID: {factura_id}, Clasificación: {clasificacion_final}, Ofimática: {numero_ofimatica}")
+
+            if not numero_ofimatica:
+                flash("El número de ofimática es obligatorio.", "error")
+                return redirect("/gestion_final")
+
+            # Convertir campos opcionales a None si están vacíos
+            retenciones = float(retenciones) if retenciones else None
+            valor_pagar = float(valor_pagar) if valor_pagar else None
+            abonos = float(abonos) if abonos else None
+            saldos = float(saldos) if saldos else None
+
+            try:
+                # Actualizar la factura con la información del formulario
+                cursor.execute("""
+                    UPDATE facturas
+                    SET numero_ofimatica = %s,
+                        retenciones = %s,
+                        valor_pagar = %s,
+                        abonos = %s,
+                        saldos = %s,
+                        clasificacion_final = %s,
+                        estado_final = 'Aprobado'  -- Cambiar a Aprobado cuando se complete
+                    WHERE id = %s
+                """, (numero_ofimatica, retenciones, valor_pagar, abonos, saldos, clasificacion_final, factura_id))
+                conn_pg.commit()
+
+                if cursor.rowcount == 0:
+                    flash("No se pudo actualizar la factura.", "error")
+                else:
+                    flash("Factura actualizada y aprobada exitosamente.", "success")
+            except Exception as e:
+                conn_pg.rollback()
+                print(f"Error al actualizar la factura: {e}")
+                flash(f"Error al actualizar la factura: {str(e)}", "error")
+
+        # Consultar facturas con estado 'Aprobado' para pago de servicios o MP
+        print("Consultando facturas para gestión final...")
+        cursor.execute("""
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
+                   pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp
+            FROM facturas
+            WHERE pago_servicios = 'Aprobado' OR pago_mp = 'Aprobado'
+        """)
+        facturas_gestion_final = cursor.fetchall()
+        print(f"Facturas obtenidas: {facturas_gestion_final}")
+
+    except Exception as e:
+        print(f"Error general en /gestion_final: {e}")
+        flash(f"Error al gestionar la vista final: {str(e)}", "error")
+        facturas_gestion_final = []
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn_pg:
+            conn_pg.close()
+
+    print("Renderizando la plantilla gestion_final.html...")
+    return render_template("gestion_final.html", facturas=facturas_gestion_final)
+
+
+
 
 
 
