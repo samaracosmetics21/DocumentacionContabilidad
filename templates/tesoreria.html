@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesorería</title>
+
+    <!-- Agregar Bootstrap para estilos -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        /* Estilo para el banner */
+        .banner {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* Estilo para el menú lateral */
+        .sidebar {
+            height: 100%;
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #343a40;
+            padding-top: 20px;
+            color: white;
+        }
+        
+        .sidebar a {
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .sidebar a:hover {
+            background-color: #575d63;
+        }
+
+        /* Contenedor principal con margen a la izquierda para el menú lateral */
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+
+        /* Estilo para los cards */
+        .card {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Estilo para el formulario dentro del card */
+        .form-container {
+            padding: 20px;
+        }
+
+        .form-container h3 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-container button {
+            width: 100%;
+        }
+
+        /* Estilo para el contenedor de los documentos */
+        .documentos-container {
+            margin-top: 20px;
+        }
+
+        .documento-item {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Banner -->
+    <div class="banner">
+        Módulo Tesorería
+    </div>
+
+    <!-- Menú lateral -->
+    <div class="sidebar">
+        <h3 class="text-center">Menú</h3>
+        <a href="#">Inicio</a>
+        <a href="#">Facturas</a>
+        <a href="#">Configuración</a>
+        <a href="#">Salir</a>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="main-content">
+
+        <!-- Mensajes de Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert alert-danger" role="alert">
+                    {% for category, message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Mostrar el número de documentos procesados -->
+        <p id="num-documentos" class="alert alert-info" style="display:none;"></p>
+
+        <!-- Card para el formulario -->
+        <div class="card">
+            <div class="card-body form-container">
+                <h3>Tesorería</h3>
+                
+                <!-- Formulario para subir archivo PDF -->
+                <form id="archivoForm" method="POST" enctype="multipart/form-data">
+                    <h5>Subir archivo PDF:</h5>
+                    <div class="mb-3">
+                        <label for="archivo_pdf" class="form-label">Subir archivo PDF:</label>
+                        <input type="file" class="form-control" name="archivo_pdf" id="archivo_pdf" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Subir archivo PDF</button>
+                </form>
+
+                <!-- Mostrar los documentos procesados -->
+                <div id="documentos-container" class="documentos-container" style="display:none;">
+                    <h5>Documentos a vincular:</h5>
+                    <form id="documentosForm" method="POST" action="{{ url_for('guardar_documentos') }}">
+                        <input type="hidden" name="archivo_path" value="{{ archivo_path }}">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Seleccionar</th>
+                                    <th>Documento</th>
+                                    <th>N° Factura</th>
+                                    <th>Fecha</th>
+                                    <th>Cheque</th>
+                                    <th>NIT</th>
+                                    <th>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documentos-body">
+                                
+                            </tbody>
+                        </table>
+                        <button type="submit" class="btn btn-success">Vincular documentos</button>
+                    </form>
+                </div>
+
+                {% if num_documentos is not none %}
+                    <p class="alert alert-info"><strong>Documentos procesados:</strong> {{ num_documentos }}</p>
+                {% endif %}
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Agregar Bootstrap JS y jQuery (necesario para los componentes interactivos y AJAX) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+    // Detectar el evento de subida de archivo PDF
+    $('#archivoForm').on('submit', function(e) {
+        e.preventDefault(); // Prevenir la acción por defecto de "submit"
+
+        let archivoPdf = $('#archivo_pdf')[0].files[0];
+
+        if (archivoPdf) {
+            // Enviar el archivo PDF al backend
+            let formData = new FormData();
+            formData.append('archivo_pdf', archivoPdf);
+
+            $.ajax({
+                url: '/tesoreria',  // Endpoint para subir archivo
+                method: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response) {
+                    // Mostrar la tabla de documentos después de recibir la respuesta
+                    console.log('Respuesta recibida:', response);
+
+                    // Actualizar el campo oculto con la ruta del archivo
+                    $("input[name='archivo_path']").val(response.archivo_path);
+
+                    // Mostrar el número de documentos
+                    $('#num-documentos').text(`Número de documentos encontrados: ${response.num_documentos}`);
+                    $('#num-documentos').show();  // Asegúrate de mostrar este mensaje.
+
+                    // Limpiar y mostrar los documentos en la tabla
+                    $('#documentos-body').empty(); // Limpiar cualquier contenido previo
+
+                    if (response.documentos.length > 0) {
+                        response.documentos.forEach(function(documento) {
+                            // Mostrar cada documento en la tabla
+                            $('#documentos-body').append(`
+                                <tr>
+                                    <td><input type="checkbox" name="dcto" value="${documento.dcto}" data-factura="${documento.factura}" id="dcto_${documento.dcto}"></td>
+                                    <td>${documento.dcto}</td>
+                                    <td>${documento.factura}</td>
+                                    <td>${documento.fecha}</td>
+                                    <td>${documento.cheque}</td>
+                                    <td>${documento.nit}</td>
+                                    <td>${documento.valor}</td>
+                                </tr>
+                            `);
+                        });
+                        // Mostrar la tabla de documentos
+                        $('#documentos-container').show();
+                    } else {
+                        $('#documentos-body').append('<tr><td colspan="6">No se encontraron documentos.</td></tr>');
+                    }
+                },
+                error: function(error) {
+                    alert('Error al subir el archivo');
+                }
+            });
+        }
+    });
+
+    // Manejo de la selección de documentos
+    $('#documentosForm').on('submit', function(e) {
+    e.preventDefault(); // Prevenir la acción por defecto de submit
+
+    // Obtener los documentos seleccionados y sus facturas asociadas
+    var selectedDocuments = [];
+    $("input[name='dcto']:checked").each(function() {
+        selectedDocuments.push({
+            dcto: $(this).val(),
+            factura: $(this).data('factura')  // Obtener la factura asociada
+        });
+    });
+
+    // Verificar si se han seleccionado documentos
+    if (selectedDocuments.length === 0) {
+        alert("Por favor, selecciona al menos un documento.");
+        return;
+    }
+
+    // Serializar los documentos seleccionados a JSON
+    var selectedDocumentsSerialized = JSON.stringify(selectedDocuments);
+
+    // Agregar el archivo a los datos del formulario
+    var formData = $(this).serializeArray(); // Serializa el formulario
+    formData.push({ name: 'selectedDocuments', value: selectedDocumentsSerialized });
+
+    // Enviar los datos al servidor
+    $.ajax({
+        url: $(this).attr('action'),
+        method: 'POST',
+        data: formData,
+        success: function(response) {
+            alert('Documentos vinculados correctamente.');
+        },
+        error: function(error) {
+            alert('Error al vincular los documentos.');
+        }
+    });
+});
+
+});
+
+    </script>
+    
+</body>
+</html>

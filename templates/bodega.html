@@ -6,6 +6,7 @@
     <title>Gestión de Bodega</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
+        /* Estilos adicionales tomados del HTML de Tesorería */
         body {
             background-color: #f8f9fa;
         }
@@ -15,6 +16,42 @@
         .container {
             max-width: 1200px;
         }
+        /* Banner */
+        .banner {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        /* Menú lateral */
+        .sidebar {
+            height: 100%;
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #343a40;
+            padding-top: 20px;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            display: block;
+        }
+        .sidebar a:hover {
+            background-color: #575d63;
+        }
+        /* Contenido principal */
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            margin-top: 60px;  /* Ajuste para que el contenido empiece debajo del navbar */
+        }
+        /* Estilo para los cards y tablas */
         table {
             background-color: #fff;
             border-radius: 8px;
@@ -46,37 +83,86 @@
             padding: 1rem;
             border-radius: 5px;
         }
+        .card {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .form-container {
+            padding: 20px;
+        }
+        .form-container h3 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .form-container button {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
-    <!-- Navegación -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container">
-            <a class="navbar-brand" href="/">Sistema de Gestión</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-light "
+        style="background: #fff; border-bottom: 1px solid #f28367; box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="../index.html">
+                <img src="https://samaracosmetics.com/wp-content/uploads/2019/03/Logo.png" alt="" width="100"
+                    height="50" style="border-radius: 5%; background: #ffff;" class="d-inline-block align-text-top"></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+            <div class="collapse navbar-collapse " id="navbarNav">
+                <ul class="navbar-nav " style="margin-left: auto;">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Facturas</a>
+                        <a class="nav-link" style="font-weight: bold; color: #f28367; display: none;" aria-current="page"
+                            href="casos.html" id="registro">Casos</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/grupos">Grupos</a>
+                        <a class="nav-link" style="font-weight: bold; color: #f28367; display: none;" aria-current="page"
+                            href="consultas.html" id="asignaciones">Consultas</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link " href="#" data-bs-toggle='modal' data-bs-target='#signupModal'
+                            style="font-weight: bold; color: #f28367; display: none;" aria-current="page">Crear
+                            usuario</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/usuarios">Usuarios</a>
+                        <a class="nav-link" href="#" id="entrar" data-bs-toggle='modal' data-bs-target='#signinModal'
+                            style="font-weight: bold; color: #f28367; display: none;" aria-current="page">Entrar</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="/bodega">Bodega</a>
+                        <a class="nav-link" style="font-weight: bold; color: #f28367; display: none;" aria-current="page"
+                            href="Informes.html" id="registro">Informes</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="logout" style="font-weight: bold; color: #f28367; display: none;"
+                            aria-current="page">Salir</a>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Contenido Principal -->
-    <div class="container">
+    <!-- Menú lateral -->
+    <div class="sidebar">
+        <h3 class="text-center text-white">Menú</h3>
+        <a href="/">Inicio</a>
+        <a href="/grupos">Grupos</a>
+        <a href="/usuarios">Usuarios</a>
+        <a href="/bodega">Bodega</a>
+        <a href="/compras">Compras</a>
+        <a href="/servicios">Servicios</a>
+        <a href="/asignaciones">Asignaciones</a>
+        <a href="/pago_servicios">Pago Servicios</a>
+        <a href="/pago_mp">Pago M.P</a>
+        <a href="/gestion_final">Gestión Final</a>
+        <a href="/tesoreria">Tesoreria</a> 
+        <a href="/facturas_resumen">Resumen Facturas</a>
+        <a href="/logout">Logout</a>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="main-content">
         <h1>Facturas Pendientes en Bodega</h1>
 
         {% if facturas %}
@@ -116,7 +202,7 @@
                         {% if factura[6] == 'Aprobado' %}
                             {{ factura[7] }}
                         {% else %}
-                            -
+                            - 
                         {% endif %}
                     </td>
                     <td>

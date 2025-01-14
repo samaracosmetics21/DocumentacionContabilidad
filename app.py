@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+import psycopg2
 from db_config import sql_server_connection, postgres_connection
 import os
 from datetime import datetime
@@ -7,6 +8,10 @@ from flask import session
 from werkzeug.security import check_password_hash
 from functools import wraps
 from flask_login import current_user
+from pyodbc import Error
+from flask import jsonify
+import decimal
+import json
 
 
 app = Flask(__name__)
@@ -26,6 +31,40 @@ def login_required(f):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return wrapped
+
+
+@app.route("/buscar_cliente", methods=["GET"])
+def buscar_cliente():
+    nombre = request.args.get("q", "").upper()  # Convertir el nombre ingresado a mayúsculas
+    
+    if nombre:
+        try:
+            conn = sql_server_connection()  # Asegúrate de que la conexión a SQL Server esté funcionando
+            if not conn:
+                return jsonify({"error": "No se pudo conectar a la base de datos"}), 500
+            
+            cursor = conn.cursor()
+
+            # Realizar la consulta, comparando en mayúsculas
+            query = """
+                SELECT TOP 10 nit, nombre 
+                FROM MTPROCLI 
+                WHERE UPPER(nombre) LIKE ?  -- Convertir el campo 'nombre' a mayúsculas
+                ORDER BY nombre
+            """
+            cursor.execute(query, ('%' + nombre + '%',))  # Agregar '%' para realizar la búsqueda de substring
+            resultados = cursor.fetchall()
+
+            # Formatear los resultados como una lista de diccionarios
+            clientes = [{"nit": row[0], "nombre": row[1]} for row in resultados]
+            
+            return jsonify(clientes)
+        
+        except Exception as e:
+            print(f"Error en la consulta: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify([])  # Si no se proporciona un término de búsqueda, devolver lista vacía
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -48,7 +87,7 @@ def index():
         clasificacion_texto = "Facturas" if clasificacion == "1" else "Servicios"
 
         # Crear la jerarquía de directorios: clasificacion/nit/fecha
-        fecha_directorio = fecha_seleccionada.replace("-", "")  # Fecha en formato YYYYMMDD
+        fecha_directorio = fecha_seleccionada.replace("-", "")  
         ruta_directorio = os.path.join(
             app.config["UPLOAD_FOLDER"], clasificacion_texto, nit, fecha_directorio
         )
@@ -940,7 +979,7 @@ def gestion_final():
     print("Iniciando vista de gestión final...")
 
     conn_pg = postgres_connection()
-    cursor = conn_pg.cursor()
+    cursor_pg = conn_pg.cursor()
 
     # Obtener el ID del usuario autenticado desde la sesión
     usuario_id = session.get("user_id")
@@ -951,16 +990,188 @@ def gestion_final():
         print("Error: sesión no válida o usuario no autenticado.")
         return redirect(url_for("login"))
 
+    # Conexión a PostgreSQL
+    conn_pg = postgres_connection()
+    cursor_pg = conn_pg.cursor()
+
+    if request.method == "POST":
+        # Recoger los valores enviados desde el formulario
+        factura_id = request.form.get("factura_id")
+        numero_ofimatica = request.form.get("numero_ofimatica")
+        password_in = request.form.get("password_in")
+        bruto = request.form.get("bruto")
+        iva_bruto = request.form.get("iva_bruto")
+        vl_retfte = request.form.get("vl_retfte")
+        v_retica = request.form.get("v_retica")
+        v_reteniva = request.form.get("v_reteniva")
+        subtotal = request.form.get("subtotal")
+        total = request.form.get("total")
+        clasificacion_final = request.form.get("clasificacion_final")
+        abonos = request.form.get("abonos")
+        retenciones = request.form.get("retenciones")
+        valor_pagar = request.form.get("valor_pagar")
+
+        # Establecer el estado final a 'Aprobado'
+        estado_final = 'Aprobado'
+
+        print(f"Facture ID: {factura_id}, Numero Ofimatica: {numero_ofimatica}, Abonos: {abonos}, Retenciones: {retenciones}, Valor a Pagar: {valor_pagar}")
+
+        try:
+            # Definir la consulta SQL para la actualización de la factura
+            update_query = """
+                UPDATE facturas
+                SET numero_ofimatica = %s,
+                    password_in = %s,
+                    bruto = %s,
+                    iva_bruto = %s,
+                    vl_retfte = %s,
+                    v_retica = %s,
+                    v_reteniva = %s,
+                    subtotal = %s,
+                    total = %s,
+                    clasificacion_final = %s,
+                    abonos = %s,
+                    retenciones = %s,
+                    valor_pagar = %s,
+                    estado_final = %s,
+                    usuario_update_final = %s,
+                    hora_actualizacion_final = CURRENT_TIMESTAMP
+                WHERE id = %s
+            """
+
+            # Ejecutar la consulta SQL con los valores recibidos desde el formulario
+            cursor_pg.execute(update_query, (
+                numero_ofimatica, password_in, bruto, iva_bruto, vl_retfte, v_retica, v_reteniva, subtotal, total, clasificacion_final, abonos, retenciones, valor_pagar, estado_final, usuario_id, factura_id
+            ))
+
+            print("Consulta SQL:", "UPDATE facturas SET estado = %s WHERE id = %s")
+            print("Parámetros:", (estado_final, factura_id))
+
+            # Confirmar los cambios en la base de datos
+            conn_pg.commit()
+            flash("Factura actualizada exitosamente.", "success")
+            print(f"Factura {factura_id} actualizada correctamente.")
+
+        except Exception as e:
+            # En caso de error, mostrar mensaje y hacer rollback
+            flash(f"Hubo un error al actualizar la factura: {e}", "error")
+            conn_pg.rollback()
+            print(f"Error al actualizar la factura: {e}")
+
+    cursor_sql = None  # Inicializar cursor_sql antes de usarlo
+    conn_sql = None  # Inicializar conn_sql antes de usarlo
+
+    # Diccionario para almacenar los datos de ofimatica
+    ofimatica_data = {}
+
+    if request.method == "POST":
+        print("Método POST detectado. Procesando facturas...")
+
+        # Conectamos a SQL Server una vez antes de procesar todas las facturas
+        conn_sql = sql_server_connection()
+        cursor_sql = conn_sql.cursor()
+
+        # Procesar el número de ofimática de cada factura
+        for factura in request.form.getlist("factura_id"):  # Iterar sobre las facturas
+            numero_ofimatica = request.form.get(f"numero_ofimatica_{factura}")
+            print(f"Número de ofimatica recibido para la factura {factura}: {numero_ofimatica}")
+
+            if numero_ofimatica:
+                try:
+                    # Primero consultar en PostgreSQL la clasificación de la factura
+                    query_clasificacion = """
+                        SELECT clasificacion
+                        FROM facturas
+                        WHERE id = %s
+                    """
+                    print(f"Consulta en PostgreSQL para obtener clasificación de la factura con ID {factura}.")
+                    cursor_pg.execute(query_clasificacion, (factura,))
+                    clasificacion = cursor_pg.fetchone()
+                    print(f"Clasificación obtenida: {clasificacion}")
+
+                    if clasificacion:
+                        clasificacion = clasificacion[0]  # 'Facturas' o 'Servicios'
+                        if clasificacion == 'Facturas':
+                            # Es una factura MP (FR)
+                            sql_server_query = """
+                                SELECT 
+                                    NRODCTO, 
+                                    PASSWORDIN, 
+                                    BRUTO, 
+                                    IVABRUTO, 
+                                    VLRETFTE, 
+                                    VRETICA, 
+                                    VRETENIVA, 
+                                    (bruto + IVABRUTO) AS SUBTOTAL, 
+                                    ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+                                FROM TRADE
+                                WHERE NRODCTO = ? AND ORIGEN='COM' AND TIPODCTO='FR'
+                            """
+                            print(f"Consulta SQL que se ejecutará para Factura MP: {sql_server_query}")
+                            cursor_sql.execute(sql_server_query, (f"%{numero_ofimatica}%",))
+                        elif clasificacion == 'Servicios':
+                            # Es una factura de Servicios (FS)
+                            sql_server_query = """
+                                SELECT 
+                                    NRODCTO, 
+                                    PASSWORDIN, 
+                                    BRUTO, 
+                                    IVABRUTO, 
+                                    VLRETFTE, 
+                                    VRETICA, 
+                                    VRETENIVA, 
+                                    (bruto + IVABRUTO) AS SUBTOTAL, 
+                                    ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+                                FROM TRADE
+                                WHERE NRODCTO = ? AND ORIGEN='COM' AND TIPODCTO='FS'
+                            """
+                            print(f"Consulta SQL que se ejecutará para Factura de Servicios: {sql_server_query}")
+                            cursor_sql.execute(sql_server_query, (f"%{numero_ofimatica}%",))
+                        else:
+                            print(f"Clasificación no válida para la factura {factura}: {clasificacion}")
+                            continue  # Si la clasificación no es válida, continuar con la siguiente factura
+
+                        # Ejecutar la consulta en SQL Server
+                        ofimatica_result = cursor_sql.fetchone()
+                        print(f"Datos obtenidos de SQL Server: {ofimatica_result}")
+
+                        if ofimatica_result:
+                            # Si se encontraron datos, asignarlos a un diccionario para la factura específica
+                            ofimatica_data[factura] = {
+                                "numero_ofimatica": ofimatica_result[0],  # NRODCTO
+                                "passwordin": ofimatica_result[1],        # PASSWORDIN
+                                "bruto": ofimatica_result[2],             # BRUTO
+                                "ivabruto": ofimatica_result[3],          # IVABRUTO
+                                "vlretfte": ofimatica_result[4],          # VLRETFTE
+                                "vretica": ofimatica_result[5],           # VRETICA
+                                "vreteniva": ofimatica_result[6],         # VRETENIVA
+                                "subtotal": ofimatica_result[7],          # SUBTOTAL
+                                "total": ofimatica_result[8]              # TOTAL
+                            }
+                        else:
+                            flash(f"No se encontró la factura con el número de ofimática {numero_ofimatica}.", "error")
+                            print(f"No se encontró la factura con el número de ofimática {numero_ofimatica}.")
+                    else:
+                        print(f"No se encontró clasificación para la factura {factura}.")
+                        continue  # Si no se encuentra clasificación, pasar a la siguiente factura
+
+                except (psycopg2.Error, pyodbc.Error) as e:
+                    print(f"Error al consultar la base de datos: {e}")
+                    flash("Ocurrió un error al obtener los datos.", "error")
+
     try:
         # Validar si el usuario pertenece al grupo de contabilidad
         print("Validando grupo del usuario...")
-        cursor.execute("""
+        query_validar_grupo = """
             SELECT g.grupo 
             FROM usuarios u
             INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
             WHERE u.id = %s AND g.grupo = 'Contabilidad'
-        """, (usuario_id,))
-        grupo = cursor.fetchone()
+        """
+        print(f"Consulta SQL que se ejecutará: {query_validar_grupo} con el usuario_id {usuario_id}")
+        
+        cursor_pg.execute(query_validar_grupo, (usuario_id,))
+        grupo = cursor_pg.fetchone()
         print(f"Resultado de validación de grupo: {grupo}")
 
         if not grupo:
@@ -968,69 +1179,337 @@ def gestion_final():
             print("Error: usuario no pertenece al grupo Contabilidad.")
             return redirect("/")
 
-        if request.method == "POST":
-            print("Método POST recibido.")
-
-            # Obtener los valores del formulario
-            factura_id = request.form.get("factura_id")
-            numero_ofimatica = request.form.get("numero_ofimatica")  # Obligatorio
-            retenciones = request.form.get("retenciones")  # Opcional
-            valor_pagar = request.form.get("valor_pagar")  # Opcional
-            abonos = request.form.get("abonos")  # Opcional
-            saldos = request.form.get("saldos")  # Opcional
-            clasificacion_final = request.form.get("clasificacion_final")  # Obligatorio
-
-            print(f"Factura ID: {factura_id}, Clasificación: {clasificacion_final}, Ofimática: {numero_ofimatica}")
-
-            if not numero_ofimatica:
-                flash("El número de ofimática es obligatorio.", "error")
-                return redirect("/gestion_final")
-
-            # Convertir campos opcionales a None si están vacíos
-            retenciones = float(retenciones) if retenciones else None
-            valor_pagar = float(valor_pagar) if valor_pagar else None
-            abonos = float(abonos) if abonos else None
-            saldos = float(saldos) if saldos else None
-
-            try:
-                # Actualizar la factura con la información del formulario
-                cursor.execute("""
-                    UPDATE facturas
-                    SET numero_ofimatica = %s,
-                        retenciones = %s,
-                        valor_pagar = %s,
-                        abonos = %s,
-                        saldos = %s,
-                        clasificacion_final = %s,
-                        estado_final = 'Aprobado'  -- Cambiar a Aprobado cuando se complete
-                    WHERE id = %s
-                """, (numero_ofimatica, retenciones, valor_pagar, abonos, saldos, clasificacion_final, factura_id))
-                conn_pg.commit()
-
-                if cursor.rowcount == 0:
-                    flash("No se pudo actualizar la factura.", "error")
-                else:
-                    flash("Factura actualizada y aprobada exitosamente.", "success")
-            except Exception as e:
-                conn_pg.rollback()
-                print(f"Error al actualizar la factura: {e}")
-                flash(f"Error al actualizar la factura: {str(e)}", "error")
-
-        # Consultar facturas con estado 'Aprobado' para pago de servicios o MP
-        print("Consultando facturas para gestión final...")
-        cursor.execute("""
+        # Obtener las facturas aprobadas
+        print("Consultando facturas aprobadas...")
+        query_facturas_aprobadas = """
             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
                    pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp
             FROM facturas
-            WHERE pago_servicios = 'Aprobado' OR pago_mp = 'Aprobado'
-        """)
-        facturas_gestion_final = cursor.fetchall()
-        print(f"Facturas obtenidas: {facturas_gestion_final}")
+            WHERE pago_servicios = 'Aprobado' OR pago_mp = 'Aprobado' and estado_final <> 'Aprobado'
+        """
+        print(f"Consulta SQL que se ejecutará: {query_facturas_aprobadas}")
+        
+        cursor_pg.execute(query_facturas_aprobadas)
+        facturas = cursor_pg.fetchall()
+        print(f"Facturas encontradas: {facturas}")
+
+        # Crear un diccionario de datos para las facturas que se mostrarán en la plantilla
+        facturas_data = []
+        for factura in facturas:
+            facturas_data.append({
+                "id": factura[0],
+                "nit": factura[1],
+                "numero_factura": factura[2],
+                "fecha_seleccionada": factura[3],
+                "clasificacion": factura[4],
+                "archivo_path": factura[5],
+                "pago_servicios": factura[6],
+                "pago_mp": factura[7],
+                "hora_aprobacion_pago_servicio": factura[8],
+                "hora_aprobacion_pago_mp": factura[9],
+                "ofimatica_data": ofimatica_data.get(factura[0], {})  # Asignar los datos de ofimática a cada factura
+            })
 
     except Exception as e:
         print(f"Error general en /gestion_final: {e}")
         flash(f"Error al gestionar la vista final: {str(e)}", "error")
-        facturas_gestion_final = []
+        facturas_data = []
+        ofimatica_data = {}
+
+    finally:
+        if cursor_pg:
+            cursor_pg.close()
+        if conn_pg:
+            conn_pg.close()
+
+    print("Renderizando la plantilla gestion_final.html...")
+    return render_template("gestion_final.html", facturas_data=facturas_data, ofimatica_data=ofimatica_data)
+
+
+# Ruta para buscar datos de la base de datos
+def obtener_factura(numero_ofimatica):
+    print(f"Buscando datos para la factura con número de ofimatica: {numero_ofimatica}")
+    
+    # Conexión con la base de datos SQL Server
+    conn = sql_server_connection()
+    cursor = conn.cursor()
+
+    # Consulta para buscar el número de ofimatica en la base de datos
+    query = f"""
+        SELECT NRODCTO, PASSWORDIN, BRUTO, IVABRUTO, VLRETFTE, VRETICA, VRETENIVA,
+               (BRUTO + IVABRUTO) AS SUBTOTAL,
+               ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+        FROM TRADE
+        WHERE NRODCTO LIKE ? AND ORIGEN='COM'
+    """
+    print(f"Consulta SQL que se ejecutará: {query}")
+    
+    cursor.execute(query, ('%' + numero_ofimatica + '%',))  # Añadimos el '%' para el LIKE
+    result = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    # Si se encontró un resultado, lo devolvemos
+    if result:
+        print(f"Factura encontrada: {result}")
+        return {
+            "nro_dcto": result[0].strip() if result[0] else "",
+            "passwordin": result[1].strip() if result[1] else "",
+            "bruto": str(result[2]),
+            "ivabruto": str(result[3]),
+            "vlretfte": str(result[4]),
+            "vretica": str(result[5]),
+            "vreteniva": str(result[6]),
+            "subtotal": str(result[7]),
+            "total": str(result[8]),
+            # Campos adicionales calculados
+            "retenciones": str(result[4]),  # VLRETFTE como 'retenciones'
+            "valor_pagar": str(result[5]),  # Un valor arbitrario, por ejemplo
+            "abonos": str(result[6]),  # Otro valor arbitrario
+            "saldos": str(result[7]),  # Un valor calculado arbitrario
+            "clasificacion_final": 'FS'  # Puedes mantener esto como un valor fijo
+        }
+    else:
+        print(f"No se encontró factura con número de ofimatica {numero_ofimatica}.")
+        return None
+
+    
+
+
+def convertir_decimal_a_float(dato):
+    """Convierte cualquier valor Decimal a float recursivamente en diccionarios o listas."""
+    if isinstance(dato, decimal.Decimal):
+        return float(dato)
+    elif isinstance(dato, dict):
+        return {key: convertir_decimal_a_float(value) for key, value in dato.items()}
+    elif isinstance(dato, list):
+        return [convertir_decimal_a_float(item) for item in dato]
+    else:
+        return dato
+
+@app.route('/buscar_ofimatica/<numero_ofimatica>', methods=['GET'])
+def buscar_ofimatica(numero_ofimatica):
+    try:
+        # Consulta a la base de datos
+        factura = obtener_factura(numero_ofimatica)
+
+        # Imprimir la factura para depuración
+        print(f"Factura recibida: {factura}")
+
+        # Verificar si la factura se ha encontrado
+        if factura:
+            # Convertir todos los valores de Decimal a float de manera recursiva
+            factura = convertir_decimal_a_float(factura)
+
+            # Devolver la respuesta como JSON
+            return jsonify(factura)
+        else:
+            return jsonify({"error": "Factura no encontrada."}), 404
+
+    except Exception as e:
+        # Manejo de excepciones en caso de error en la consulta o en el proceso
+        print(f"Error al procesar la factura: {e}")
+        return jsonify({"error": "Error interno al procesar la solicitud."}), 500
+
+
+@app.route("/tesoreria", methods=["GET", "POST"])
+def tesoreria():
+    print("Iniciando vista para vincular documentos a un archivo PDF...")
+
+    # Obtener el ID del usuario autenticado desde la sesión
+    usuario_id = session.get("user_id")
+    if not usuario_id:
+        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        archivo_pdf = request.files.get("archivo_pdf")
+
+        # Validar si se ha subido un archivo PDF
+        if not archivo_pdf:
+            flash("Por favor, sube un archivo PDF.", "error")
+            return render_template("tesoreria.html")
+
+        print(f"Archivo recibido: {archivo_pdf.filename}")
+
+        # Guardar el archivo PDF
+        directorio_base = os.path.join(app.config['UPLOAD_FOLDER'], 'Pagos')
+        if not os.path.exists(directorio_base):
+            os.makedirs(directorio_base)
+
+        # Guardar el archivo PDF en la nueva carpeta "Pagos"
+        archivo_nombre = archivo_pdf.filename  # Nombre del archivo (ej. archivo.pdf)
+        archivo_path = os.path.join('Pagos', archivo_nombre)  # Guardar solo la ruta relativa
+        archivo_pdf.save(os.path.join(directorio_base, archivo_nombre))
+        print(f"Archivo guardado en: {archivo_path}")
+
+        try:
+            # Conexión a SQL Server para buscar los documentos de los últimos 30 días
+            conn_sql_server = sql_server_connection()
+            cursor_sql_server = conn_sql_server.cursor()
+
+            # Consultar los documentos de los últimos 45 días
+            query_sql_server = """
+                SELECT 
+                LTRIM(RTRIM(dcto)) AS dcto,
+                LTRIM(RTRIM(fecha)) AS fecha,
+                LTRIM(RTRIM(cheque)) AS cheque,
+                LTRIM(RTRIM(nit)) AS nit,
+                LTRIM(RTRIM(PASSWORDIN)) AS PASSWORDIN,
+                LTRIM(RTRIM(valor)) AS valor,
+                LTRIM(RTRIM(tipodcto)) AS tipodcto,
+                LTRIM(RTRIM(factura)) AS factura
+            FROM ABOCXP
+            WHERE fecha >= DATEADD(DAY, -30, GETDATE()) AND tipodcto='CE' 
+            ORDER BY factura
+            """
+            print(f"Ejecutando consulta SQL Server: {query_sql_server}")
+            cursor_sql_server.execute(query_sql_server)
+            documentos = cursor_sql_server.fetchall()
+
+            # Si no se encontraron documentos, mostrar mensaje
+            if not documentos:
+                flash("No se encontraron documentos en los últimos 30 días.", "error")
+                return render_template("tesoreria.html")
+
+            print(f"Documentos encontrados: {len(documentos)}")
+
+            # Procesamos los documentos para pasarlos a la plantilla
+            documentos_encontrados = [{
+                "dcto": dcto,
+                "fecha": fecha,
+                "cheque": cheque,
+                "nit": nit,
+                "passwordin": passwordin,
+                "valor": valor,
+                "tipodcto": tipodcto,
+                "factura": factura
+            } for dcto, fecha, cheque, nit, passwordin, valor, tipodcto, factura in documentos]
+
+            # Mostrar los documentos encontrados antes de enviarlos
+            print(f"Documentos procesados para plantilla: {len(documentos_encontrados)}")
+
+            # Asegurarse de que la respuesta sea un JSON
+            return jsonify({
+                "documentos": documentos_encontrados,
+                "archivo_path": archivo_path,
+                "num_documentos": len(documentos_encontrados)
+            })
+
+        except Exception as e:
+            flash(f"Ocurrió un error al buscar los documentos: {e}", "error")
+            print(f"Error en la consulta SQL Server: {e}")
+
+        finally:
+            if cursor_sql_server:
+                cursor_sql_server.close()
+            if conn_sql_server:
+                conn_sql_server.close()
+
+    return render_template("tesoreria.html")
+
+@app.route("/guardar_documentos", methods=["POST"])
+def guardar_documentos():
+    try:
+        # Obtener la ruta del archivo y los documentos seleccionados
+        archivo_path = request.form.get("archivo_path")
+        print(f'ruta del archivo jesus: {archivo_path}')
+        selected_documents_json = request.form.get("selectedDocuments")  # Obtener los documentos seleccionados (en formato JSON)
+
+        # Deserializar el JSON
+        if selected_documents_json:
+            selected_documents = json.loads(selected_documents_json)
+
+        print(f"Ruta del archivo: {archivo_path}")
+        print(f"Documentos seleccionados: {selected_documents}")
+
+        # Conexión a PostgreSQL
+        conn_pg = postgres_connection()
+        cursor_pg = conn_pg.cursor()
+
+        # Iterar sobre los documentos seleccionados
+        for doc in selected_documents:
+            dcto = doc['dcto']
+            factura = doc['factura']
+            print(f'Dcto: {dcto}, Factura: {factura}')
+
+            # Realizar el UPDATE en la tabla facturas (con los valores correctos de 'dcto' y 'factura')
+            update_query = """
+                UPDATE facturas
+                SET dctos = %s, archivo_pdf = %s
+                WHERE numero_ofimatica = %s
+            """
+            cursor_pg.execute(update_query, (dcto, archivo_path, str(factura)))
+
+        # Confirmar los cambios
+        conn_pg.commit()
+
+        flash("Documentos vinculados correctamente a las facturas.", "success")
+        return redirect(url_for("tesoreria"))
+
+    except Exception as e:
+        flash(f"Ocurrió un error al guardar los documentos: {e}", "error")
+        print(f"Error: {e}")
+
+    finally:
+        if cursor_pg:
+            cursor_pg.close()
+        if conn_pg:
+            conn_pg.close()
+
+    return render_template("tesoreria.html")
+
+
+@app.route("/facturas_resumen", methods=["GET"])
+@login_required
+def facturas_servicios():
+    conn_pg = postgres_connection()
+    cursor = conn_pg.cursor()
+
+    try:
+        # Ejecutar la consulta para obtener las facturas con los campos especificados
+        cursor.execute("""
+            SELECT 
+                f.nit, 
+                f.nombre, 
+                f.numero_factura,
+                f.fecha_seleccionada, 
+                f.fecha_registro, 
+                f.clasificacion, 
+                f.archivo_path,
+                f.hora_aprobacion as aprobacion_bodega, 
+                f.estado as estado_aprobacion_bodega, 
+                COALESCE(u.usuario, '') as usuario_aprueba_bodega,  -- Si no hay nombre de usuario, muestra vacío
+                f.estado_compras,
+                f.hora_aprobacion_compras,
+                COALESCE(u1.usuario, '') as usuario_aprueba_compras, 
+                f.remision,
+                f.archivo_remision as orden_compra,
+                f.pago_mp as estado_aprobacion_jefe_mp, 
+                f.estado_final as estado_final_contabilizado,
+                f.archivo_pdf as archivo_pago_banco, 
+                f.dctos as comprobantes_egresos, 
+                COALESCE(u3.usuario, '') as usuario_asignado_servicios, 
+                COALESCE(u2.usuario, '') as usuario_asigno_contabilidad,
+                f.estado_usuario_asignado as estado_aprobacion_user_servi,
+                f.hora_aprobacion_asignado as hora_aprobacion_user_servicio, 
+                f.pago_servicios as aprobacion_jefe_servicios,
+                f.hora_aprobacion_pago_servicio as hora_aprobacion_jefe_servicio,
+                f.valor_pagar
+            FROM facturas f
+            LEFT JOIN usuarios u ON f.aprobado_bodega = u.id  
+            LEFT JOIN usuarios u1 ON f.aprobado_compras = u1.id  
+            LEFT JOIN usuarios u2 ON f.aprobado_servicios = u2.id 
+            LEFT JOIN usuarios u3 ON f.usuario_asignado_servicios = u3.id 
+            --WHERE clasificacion = 'Servicios' AND estado = 'Pendiente'
+            --ORDER BY fecha_seleccionada ASC
+        """)
+        facturas = cursor.fetchall()
+
+    except Exception as e:
+        flash(f"Error al consultar las facturas: {str(e)}", "error")
+        facturas = []
 
     finally:
         if cursor:
@@ -1038,15 +1517,13 @@ def gestion_final():
         if conn_pg:
             conn_pg.close()
 
-    print("Renderizando la plantilla gestion_final.html...")
-    return render_template("gestion_final.html", facturas=facturas_gestion_final)
+    return render_template("facturas_servicios.html", facturas=facturas)
 
 
 
 
 
-
-
+        
 @app.route("/logout")
 def logout():
     session.clear()  
@@ -1056,4 +1533,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=2837, debug=True)
+    app.run(host='10.1.200.30', port=2837, debug=True)
