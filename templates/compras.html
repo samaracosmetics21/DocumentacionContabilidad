@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,48 +8,123 @@
     <style>
         body {
             background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
         }
+
+        /* Barra de navegación */
         .navbar {
-            margin-bottom: 2rem;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.3rem;
+            color: #007bff;
+        }
+
+        .navbar-nav .nav-link {
+            font-weight: bold;
+            color: #f28367;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #0056b3;
+        }
+
+        /* Contenido Principal */
         .container {
-            max-width: 1200px;
+            margin-top: 2rem;
         }
+
         h1 {
             text-align: center;
             color: #343a40;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
+
+        /* Estilo para la tabla */
         table {
-            background-color: #fff;
+            background-color: #ffffff;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
+
         table thead {
             background-color: #343a40;
-            color: #fff;
+            color: white;
         }
-        table th,
-        table td {
+
+        table th, table td {
             text-align: center;
             vertical-align: middle;
+            padding: 0.75rem;
         }
-        .btn-success {
+
+        table tr:nth-child(even) {
+            background-color: #f1f3f5;
+        }
+
+        table tr:hover {
+            background-color: #e9ecef;
+        }
+
+        .badge {
             font-size: 0.9rem;
+            padding: 0.5rem 1rem;
         }
-        .btn-secondary {
-            font-size: 0.9rem;
+
+        .btn-sm {
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
         }
+
         .alert {
+            margin-top: 2rem;
             text-align: center;
-            margin-top: 1rem;
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+            padding: 1rem;
+            border-radius: 5px;
         }
+
+        /* Estilo para los botones */
+        .btn-success {
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
+        .btn-secondary {
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-secondary:disabled {
+            background-color: #6c757d;
+        }
+
+        .form-container {
+            padding: 2rem;
+        }
+
+        .form-container h3 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-container button {
+            width: 100%;
+        }
+
     </style>
 </head>
 <body>
-    <!-- Navegación -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="/">Sistema de Gestión</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -74,7 +149,7 @@
         </div>
     </nav>
 
-    <!-- Contenido Principal  -->
+    <!-- Contenido Principal -->
     <div class="container">
         <h1>Facturas Pendientes en Compras</h1>
 
@@ -108,14 +183,14 @@
                         {% if factura[6] == 'Aprobado' %}
                             <span class="badge bg-success">Aprobado</span>
                         {% else %}
-                            <span class="badge bg-secondary">Pendiente</span>
+                            <span class="badge bg-warning">Pendiente</span>
                         {% endif %}
                     </td>
                     <td>
                         {% if factura[6] == 'Aprobado' %}
                             {{ factura[7] }}
                         {% else %}
-                            -
+                            - 
                         {% endif %}
                     </td>
                     <td>

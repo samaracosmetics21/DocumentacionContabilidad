@@ -1,30 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Bodega</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        /* Estilos adicionales tomados del HTML de Tesorería */
         body {
             background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
         }
+
+        /* Barra de navegación */
         .navbar {
-            margin-bottom: 2rem;
+            background: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-        .container {
-            max-width: 1200px;
-        }
-        /* Banner */
-        .banner {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 0;
-            text-align: center;
-            font-size: 24px;
+
+        .navbar-brand {
             font-weight: bold;
+            font-size: 1.2rem;
+            color: #007bff;
         }
+
+        .navbar-nav .nav-link {
+            font-weight: bold;
+            color: #f28367;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #0056b3;
+        }
+
         /* Menú lateral */
         .sidebar {
             height: 100%;
@@ -35,64 +42,103 @@
             background-color: #343a40;
             padding-top: 20px;
             color: white;
+            box-shadow: 4px 0px 8px rgba(0, 0, 0, 0.1);
         }
+
         .sidebar a {
             color: white;
-            padding: 10px 15px;
+            padding: 12px 20px;
             text-decoration: none;
             display: block;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
         }
+
         .sidebar a:hover {
             background-color: #575d63;
         }
+
+        .sidebar a.active {
+            background-color: #007bff;
+            color: white;
+        }
+
         /* Contenido principal */
         .main-content {
             margin-left: 250px;
-            padding: 20px;
+            padding: 2rem;
             margin-top: 60px;  /* Ajuste para que el contenido empiece debajo del navbar */
         }
-        /* Estilo para los cards y tablas */
+
+        h1 {
+            color: #343a40;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
         table {
             background-color: #fff;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
+
         table thead {
             background-color: #343a40;
             color: #fff;
         }
-        table th,
-        table td {
+
+        table th, table td {
             text-align: center;
             vertical-align: middle;
+            padding: 0.75rem;
         }
-        h1 {
-            color: #343a40;
-            text-align: center;
-            margin-bottom: 1.5rem;
+
+        table tr:nth-child(even) {
+            background-color: #f8f9fa;
         }
-        .btn-success {
+
+        table tr:hover {
+            background-color: #f1f3f5;
+        }
+
+        .badge {
             font-size: 0.9rem;
+            padding: 0.5rem 1rem;
         }
+
+        .btn-sm {
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-success {
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
         .alert {
+            margin-top: 2rem;
             text-align: center;
-            background-color: #e9ecef;
-            color: #6c757d;
-            border: none;
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
             padding: 1rem;
             border-radius: 5px;
         }
-        .card {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
+
         .form-container {
             padding: 20px;
         }
+
         .form-container h3 {
             text-align: center;
             margin-bottom: 20px;
         }
+
         .form-container button {
             width: 100%;
         }
@@ -100,43 +146,30 @@
 </head>
 <body>
     <!-- Barra de navegación -->
-    <nav class="navbar navbar-expand-lg navbar-light "
-        style="background: #fff; border-bottom: 1px solid #f28367; box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);">
+    <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container-fluid">
             <a class="navbar-brand" href="../index.html">
-                <img src="https://samaracosmetics.com/wp-content/uploads/2019/03/Logo.png" alt="" width="100"
-                    height="50" style="border-radius: 5%; background: #ffff;" class="d-inline-block align-text-top"></a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <img src="https://samaracosmetics.com/wp-content/uploads/2019/03/Logo.png" alt="" width="100" height="50" class="d-inline-block align-text-top">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse " id="navbarNav">
-                <ul class="navbar-nav " style="margin-left: auto;">
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" style="font-weight: bold; color: #f28367; display: none;" aria-current="page"
-                            href="casos.html" id="registro">Casos</a>
+                        <a class="nav-link active" href="/bodega">Bodega</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" style="font-weight: bold; color: #f28367; display: none;" aria-current="page"
-                            href="consultas.html" id="asignaciones">Consultas</a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link " href="#" data-bs-toggle='modal' data-bs-target='#signupModal'
-                            style="font-weight: bold; color: #f28367; display: none;" aria-current="page">Crear
-                            usuario</a>
+                        <a class="nav-link" href="/compras">Compras</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" id="entrar" data-bs-toggle='modal' data-bs-target='#signinModal'
-                            style="font-weight: bold; color: #f28367; display: none;" aria-current="page">Entrar</a>
+                        <a class="nav-link" href="/servicios">Servicios</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" style="font-weight: bold; color: #f28367; display: none;" aria-current="page"
-                            href="Informes.html" id="registro">Informes</a>
+                        <a class="nav-link" href="/asignaciones">Asignaciones</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" id="logout" style="font-weight: bold; color: #f28367; display: none;"
-                            aria-current="page">Salir</a>
+                        <a class="nav-link" href="/logout">Logout</a>
                     </li>
                 </ul>
             </div>
@@ -149,14 +182,14 @@
         <a href="/">Inicio</a>
         <a href="/grupos">Grupos</a>
         <a href="/usuarios">Usuarios</a>
-        <a href="/bodega">Bodega</a>
+        <a href="/bodega" class="active">Bodega</a>
         <a href="/compras">Compras</a>
         <a href="/servicios">Servicios</a>
         <a href="/asignaciones">Asignaciones</a>
         <a href="/pago_servicios">Pago Servicios</a>
         <a href="/pago_mp">Pago M.P</a>
         <a href="/gestion_final">Gestión Final</a>
-        <a href="/tesoreria">Tesoreria</a> 
+        <a href="/tesoreria">Tesoreria</a>
         <a href="/facturas_resumen">Resumen Facturas</a>
         <a href="/logout">Logout</a>
     </div>
@@ -189,7 +222,7 @@
                     <td>{{ factura[3] }}</td>
                     <td>{{ factura[4] }}</td>
                     <td>
-                        <a href="{{ url_for('static', filename= 'uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
+                        <a href="{{ url_for('static', filename='uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
                     </td>
                     <td>
                         {% if factura[6] == 'Aprobado' %}

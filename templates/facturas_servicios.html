@@ -18,9 +18,9 @@
         .banner {
             background-color: #007bff;
             color: white;
-            padding: 10px 0;
+            padding: 20px 0;
             text-align: center;
-            font-size: 24px;
+            font-size: 26px;
             font-weight: bold;
         }
 
@@ -34,13 +34,16 @@
             background-color: #343a40;
             padding-top: 20px;
             color: white;
+            z-index: 1000;
         }
 
         .sidebar a {
             color: white;
-            padding: 10px 15px;
+            padding: 12px 15px;
             text-decoration: none;
             display: block;
+            font-size: 1.1rem;
+            transition: background-color 0.3s;
         }
 
         .sidebar a:hover {
@@ -55,12 +58,13 @@
 
         /* Estilo para las tarjetas */
         .card {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         /* Estilo para los enlaces de los archivos */
         .file-link {
             color: #007bff;
+            text-decoration: none;
         }
 
         .file-link:hover {
@@ -71,12 +75,23 @@
         .table-container {
             overflow-x: auto;
         }
+
+        /* Ajustes en los íconos de aprobación */
+        .status-icon {
+            font-size: 1.2rem;
+        }
+
+        .status-approved {
+            color: green;
+        }
+
+        .status-denied {
+            color: red;
+        }
+
     </style>
 </head>
 <body>
-
-    <!-- Barra de navegación superior -->
-    
 
     <!-- Menú lateral -->
     <div class="sidebar">
@@ -91,7 +106,7 @@
         <a href="/pago_servicios">Pago Servicios</a>
         <a href="/pago_mp">Pago M.P</a>
         <a href="/gestion_final">Gestión Final</a>
-        <a href="/tesoreria">Tesoreria</a> 
+        <a href="/tesoreria">Tesorería</a>
         <a href="/facturas_resumen">Resumen Facturas</a>
         <a href="/logout">Logout</a>
     </div>
@@ -160,70 +175,47 @@
                                     <td>
                                         {% if factura[6] %}
                                         <a href="{{ url_for('static', filename= 'uploads/' + factura[6].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Archivo</a>
-                                        {% else %}
-                                        No disponible
-                                        {% endif %}
+                                        {% else %} No disponible {% endif %}
                                     </td>
                                     <td>{{ factura[7] }}</td>
                                     <td>
-                                        {% if factura[8] == 'Aprobado' %}
-                                            <i class="fas fa-check" style="color: green;"></i>
-                                        {% else %}
-                                            <i class="fas fa-times" style="color: red;"></i>
-                                        {% endif %}
+                                        <i class="fas fa-check status-icon status-approved" style="display: {% if factura[8] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
+                                        <i class="fas fa-times status-icon status-denied" style="display: {% if factura[8] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                     <td>{{ factura[9] }}</td>
                                     <td>
-                                        {% if factura[10] == 'Aprobado' %}
-                                            <i class="fas fa-check" style="color: green;"></i>
-                                        {% else %}
-                                            <i class="fas fa-times" style="color: red;"></i>
-                                        {% endif %}
+                                        <i class="fas fa-check status-icon status-approved" style="display: {% if factura[10] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
+                                        <i class="fas fa-times status-icon status-denied" style="display: {% if factura[10] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                     <td>{{ factura[11] }}</td>
                                     <td>
-                                        {% if factura[12] == 'Aprobado' %}
-                                            <i class="fas fa-check" style="color: green;"></i>
-                                        {% else %}
-                                            <i class="fas fa-times" style="color: red;"></i>
-                                        {% endif %}
+                                        <i class="fas fa-check status-icon status-approved" style="display: {% if factura[12] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
+                                        <i class="fas fa-times status-icon status-denied" style="display: {% if factura[12] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                     <td>{{ factura[13] }}</td>
                                     <td>
                                         {% if factura[14] %}
                                         <a href="{{ url_for('static', filename= 'uploads/' + factura[14].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Orden de Compra</a>
-                                        {% else %}
-                                        No disponible
-                                        {% endif %}
+                                        {% else %} No disponible {% endif %}
                                     </td>
                                     <td>{{ factura[15] }}</td>
                                     <td>{{ factura[16] }}</td>
                                     <td>
                                         {% if factura[17] %}
                                         <a href="{{ url_for('static', filename= 'uploads/' + factura[17].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Archivo Pago Banco</a>
-                                        {% else %}
-                                        No disponible
-                                        {% endif %}
+                                        {% else %} No disponible {% endif %}
                                     </td>
                                     <td>{{ factura[18] }}</td>
                                     <td>{{ factura[19] }}</td>
                                     <td>{{ factura[20] }}</td>
-                                    
                                     <td>
-                                        {% if factura[21] == 'Aprobado' %}
-                                            <i class="fas fa-check" style="color: green;"></i>
-                                        {% else %}
-                                            <i class="fas fa-times" style="color: red;"></i>
-                                        {% endif %}
+                                        <i class="fas fa-check status-icon status-approved" style="display: {% if factura[21] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
+                                        <i class="fas fa-times status-icon status-denied" style="display: {% if factura[21] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                     <td>{{ factura[22] }}</td>
-                                    
                                     <td>
-                                        {% if factura[23] == 'Aprobado' %}
-                                            <i class="fas fa-check" style="color: green;"></i>
-                                        {% else %}
-                                            <i class="fas fa-times" style="color: red;"></i>
-                                        {% endif %}
+                                        <i class="fas fa-check status-icon status-approved" style="display: {% if factura[23] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
+                                        <i class="fas fa-times status-icon status-denied" style="display: {% if factura[23] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -232,7 +224,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -243,18 +234,16 @@
 
     <script>
         $(document).ready(function() {
-            // Inicialización de DataTables
             var table = $('#facturasTable').DataTable({
-                paging: true,          // Habilitar paginación
-                searching: true,       // Habilitar búsqueda
-                lengthChange: false,   // Deshabilitar cambio de número de filas por página
-                pageLength: 10,        // Definir número de filas por página
+                paging: true,
+                searching: true,
+                lengthChange: false,
+                pageLength: 10,
                 language: {
                     url: 'https://cdn.datatables.net/plug-ins/1.13.1/i18n/Spanish.json'
                 }
             });
 
-            // Filtro de búsqueda en el campo de búsqueda
             $('#search').on('keyup', function() {
                 table.search(this.value).draw();
             });

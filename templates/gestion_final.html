@@ -7,49 +7,89 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
         body {
-            background-color: #f8f9fa;
+            background-color: #f4f6f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .navbar {
+            background-color: #007bff;
+        }
+        .navbar-brand {
+            color: white;
+            font-weight: bold;
+        }
+        .navbar-nav .nav-link {
+            color: white !important;
+        }
+        .navbar-nav .nav-link:hover {
+            color: #f8f9fa !important;
+            background-color: #0056b3;
+            border-radius: 5px;
+        }
+        h1 {
+            color: #343a40;
+            text-align: center;
             margin-bottom: 2rem;
         }
         .container {
             max-width: 1200px;
-        }
-        h1 {
-            text-align: center;
-            color: #343a40;
-            margin-bottom: 1.5rem;
+            margin-top: 2rem;
         }
         table {
             background-color: #fff;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
         }
         table thead {
-            background-color: #343a40;
-            color: #fff;
+            background-color: #007bff;
+            color: white;
         }
-        table th,
-        table td {
+        table th, table td {
+            padding: 1rem;
             text-align: center;
             vertical-align: middle;
         }
+        .btn-success, .btn-secondary {
+            font-size: 1rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+        }
         .btn-success {
-            font-size: 0.9rem;
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
         }
         .btn-secondary {
-            font-size: 0.9rem;
+            background-color: #6c757d;
+            border-color: #6c757d;
         }
-        .alert {
-            text-align: center;
-            margin-top: 1rem;
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+        .form-control {
+            border-radius: 5px;
+        }
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-radius: 5px;
+        }
+        .form-select {
+            border-radius: 5px;
+        }
+        .input-group {
+            margin-bottom: 1rem;
         }
     </style>
 </head>
 <body>
     <!-- Navegación -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="/">Sistema de Gestión</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -105,66 +145,64 @@
                     </td>
                     <td>
                         <form method="POST" action="/gestion_final">
-                            <!-- Input oculto para el id de la factura -->
                             <input type="hidden" name="factura_id" value="{{ factura.id }}">
 
-                            <!-- Mostrar el Número de Ofimática  required-->
-                            <!--<input type="text" name="numero_ofimatica" id="numero_ofimatica_{{ factura.id }}" 
-                                placeholder="Número Ofimática" class="form-control mb-2" 
-                                oninput="buscarOfimatica('{{ factura.id }}')" required>   -->
-
-                                <!-- Clasificación Final (debe ser seleccionada por el usuario) -->
-                            <select name="clasificacion_final" id="clasificacion_final_{{ factura.id }}" required class="form-select mb-2">
+                            <select name="clasificacion_final" id="clasificacion_final_{{ factura.id }}" required class="form-select mb-3">
                                 <option value="FS">FS - Factura Servicios</option>
                                 <option value="FR">FR - Factura MP</option>
                                 <option value="DN">DN - Documentos Soportes</option>
                                 <option value="CM">CM - Cajas General</option>
                             </select>
 
+                            <div class="input-group mb-3">
                                 <input type="text" name="numero_ofimatica" id="numero_ofimatica_{{ factura.id }}" 
-                                placeholder="Número Ofimática" class="form-control mb-2" 
-                                onkeydown="verificarEnter(event, '{{ factura.id }}')" required>
+                                       placeholder="Número Ofimática" class="form-control" onkeydown="verificarEnter(event, '{{ factura.id }}')" required>
+                            </div>
 
-                            <!-- Mostrar los demás campos con la información correspondiente -->
-                            <!-- <input type="text" name="numero_factura" id="numero_factura_{{ factura.id }}" 
-                                placeholder="Número de Factura" class="form-control mb-2" readonly> -->
+                            <div class="input-group mb-3">
+                                <input type="text" name="password_in" id="password_in_{{ factura.id }}" placeholder="Usuario" class="form-control" readonly>
+                            </div>
 
-                            <input type="text" name="password_in" id="password_in_{{ factura.id }}" 
-                                placeholder="Usuario" class="form-control mb-2" readonly>
+                            <div class="input-group mb-3">
+                                <input type="number" name="bruto" id="bruto_{{ factura.id }}" placeholder="Bruto" class="form-control" readonly>
+                            </div>
 
-                            <input type="number" name="bruto" id="bruto_{{ factura.id }}" 
-                                placeholder="Bruto" class="form-control mb-2" readonly>
+                            <div class="input-group mb-3">
+                                <input type="number" name="iva_bruto" id="iva_bruto_{{ factura.id }}" placeholder="IVA Bruto" class="form-control" readonly>
+                            </div>
 
-                            <input type="number" name="iva_bruto" id="iva_bruto_{{ factura.id }}" 
-                                placeholder="IVA Bruto" class="form-control mb-2" readonly>
+                            <div class="input-group mb-3">
+                                <input type="number" name="vl_retfte" id="vl_retfte_{{ factura.id }}" placeholder="Retención Fuente" class="form-control" readonly>
+                            </div>
 
-                            <input type="number" name="vl_retfte" id="vl_retfte_{{ factura.id }}" 
-                                placeholder="Retención Fuente" class="form-control mb-2" readonly>
+                            <div class="input-group mb-3">
+                                <input type="number" name="v_retica" id="v_retica_{{ factura.id }}" placeholder="Retención ICA" class="form-control" readonly>
+                            </div>
 
-                            <input type="number" name="v_retica" id="v_retica_{{ factura.id }}" 
-                                placeholder="Retención ICA" class="form-control mb-2" readonly>
+                            <div class="input-group mb-3">
+                                <input type="number" name="v_reteniva" id="v_reteniva_{{ factura.id }}" placeholder="Retención IVA" class="form-control" readonly>
+                            </div>
 
-                            <input type="number" name="v_reteniva" id="v_reteniva_{{ factura.id }}" 
-                                placeholder="Retención IVA" class="form-control mb-2" readonly>
+                            <div class="input-group mb-3">
+                                <input type="number" name="subtotal" id="subtotal_{{ factura.id }}" placeholder="Subtotal" class="form-control" readonly>
+                            </div>
 
-                            <input type="number" name="subtotal" id="subtotal_{{ factura.id }}" 
-                                placeholder="Subtotal" class="form-control mb-2" readonly>
-
-                            <input type="number" name="total" id="total_{{ factura.id }}" 
-                                placeholder="Total" class="form-control mb-2" readonly>
-
-                            
+                            <div class="input-group mb-3">
+                                <input type="number" name="total" id="total_{{ factura.id }}" placeholder="Total" class="form-control" readonly>
+                            </div>
 
                             <!-- Nuevos campos (Abonos, Retenciones, Valor a Pagar) -->
-                            <input type="number" name="abonos" id="abonos_{{ factura.id }}" 
-                                placeholder="Abonos" class="form-control mb-2" readonly style="display:none;">
+                            <div class="input-group mb-3">
+                                <input type="number" name="abonos" id="abonos_{{ factura.id }}" placeholder="Abonos" class="form-control" readonly style="display:none;">
+                            </div>
 
-                            <input type="number" name="retenciones" id="retenciones_{{ factura.id }}" 
-                                placeholder="Retenciones" class="form-control mb-2" readonly style="display:none;">
+                            <div class="input-group mb-3">
+                                <input type="number" name="retenciones" id="retenciones_{{ factura.id }}" placeholder="Retenciones" class="form-control" readonly style="display:none;">
+                            </div>
 
-                            <input type="number" name="valor_pagar" id="valor_pagar_{{ factura.id }}" 
-                                placeholder="Valor a Pagar" class="form-control mb-2" readonly style="display:none;">
-
+                            <div class="input-group mb-3">
+                                <input type="number" name="valor_pagar" id="valor_pagar_{{ factura.id }}" placeholder="Valor a Pagar" class="form-control" readonly style="display:none;">
+                            </div>
 
                             <button type="submit" class="btn btn-success">Actualizar</button>
                         </form>
@@ -181,66 +219,51 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-      // Función que se ejecuta cuando el usuario presiona una tecla en el campo de número de ofimática
-function verificarEnter(event, facturaId) {
-    // Verificamos si la tecla presionada es "Enter"
-    if (event.key === "Enter") {
-        // Prevenir la acción predeterminada (evitar que recargue la página o envíe el formulario)
-        event.preventDefault();
-        
-        // Obtener el valor del campo de "Número Ofimática"
-        const numeroOfimatica = document.getElementById("numero_ofimatica_" + facturaId).value;
-
-        // Verificar si el número de Ofimática no está vacío antes de llamar a la función de búsqueda
-        if (numeroOfimatica.trim() !== "") {
-            // Llamamos a la función que buscará la ofimática
-            buscarOfimatica(facturaId, numeroOfimatica);
-        } else {
-            alert("Por favor ingrese un número de Ofimática.");
-        }
-    }
-}
-
-// Función que se llama para buscar los datos de la factura según el número de Ofimática
-function buscarOfimatica(facturaId, numeroOfimatica) {
-    // Definimos la URL a la que se hará la petición. Asegúrate de ajustar la URL a tu backend
-    const url = `/buscar_ofimatica/${numeroOfimatica}`;
-    
-    // Realizamos la solicitud Fetch al servidor
-    fetch(url)
-        .then(response => response.json())  // Convertimos la respuesta a formato JSON
-        .then(data => {
-            console.log("Datos recibidos: ", data);  // Imprime los datos recibidos para verificar
-            
-            if (data) {
-                // Asignamos los valores a los campos correspondientes utilizando el ID de la factura
-
-                // Asignación de valores de texto y numéricos a los campos
-                document.getElementById("numero_ofimatica_" + facturaId).value = data.nro_dcto || '';  // Número Ofimática
-                document.getElementById("password_in_" + facturaId).value = data.passwordin || '';  // Password
-                document.getElementById("bruto_" + facturaId).value = data.bruto || '';  // Bruto
-                document.getElementById("iva_bruto_" + facturaId).value = data.ivabruto || '';  // IVA Bruto
-                document.getElementById("vl_retfte_" + facturaId).value = data.vlretfte || '';  // Retención Fuente
-                document.getElementById("v_retica_" + facturaId).value = data.vretica || '';  // Retención ICA
-                document.getElementById("v_reteniva_" + facturaId).value = data.vreteniva || '';  // Retención IVA
-                document.getElementById("subtotal_" + facturaId).value = data.subtotal || '';  // Subtotal
-                document.getElementById("total_" + facturaId).value = data.total || '';  // Total
-
-                // Asignación de valores para los nuevos campos (Abonos, Retenciones, Valor a Pagar)
-                document.getElementById("abonos_" + facturaId).value = data.abonos || '';
-                document.getElementById("retenciones_" + facturaId).value = data.retenciones || '';
-                document.getElementById("valor_pagar_" + facturaId).value = data.valor_pagar || '';
-            } else {
-                alert("No se encontraron datos para este número de Ofimática.");
+        // Función que se ejecuta cuando el usuario presiona una tecla en el campo de número de ofimática
+        function verificarEnter(event, facturaId) {
+            // Verificamos si la tecla presionada es "Enter"
+            if (event.key === "Enter") {
+                event.preventDefault();
+                
+                const numeroOfimatica = document.getElementById("numero_ofimatica_" + facturaId).value;
+                
+                if (numeroOfimatica.trim() !== "") {
+                    buscarOfimatica(facturaId, numeroOfimatica);
+                } else {
+                    alert("Por favor ingrese un número de Ofimática.");
+                }
             }
-        })
-        .catch(error => {
-            console.error('Error al obtener los datos de la factura:', error);  // Manejo de errores
-        });
-}
+        }
 
+        // Función que se llama para buscar los datos de la factura según el número de Ofimática
+        function buscarOfimatica(facturaId, numeroOfimatica) {
+            const url = `/buscar_ofimatica/${numeroOfimatica}`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data) {
+                        document.getElementById("numero_ofimatica_" + facturaId).value = data.nro_dcto || '';
+                        document.getElementById("password_in_" + facturaId).value = data.passwordin || '';
+                        document.getElementById("bruto_" + facturaId).value = data.bruto || '';
+                        document.getElementById("iva_bruto_" + facturaId).value = data.ivabruto || '';
+                        document.getElementById("vl_retfte_" + facturaId).value = data.vlretfte || '';
+                        document.getElementById("v_retica_" + facturaId).value = data.vretica || '';
+                        document.getElementById("v_reteniva_" + facturaId).value = data.vreteniva || '';
+                        document.getElementById("subtotal_" + facturaId).value = data.subtotal || '';
+                        document.getElementById("total_" + facturaId).value = data.total || '';
 
-
+                        document.getElementById("abonos_" + facturaId).value = data.abonos || '';
+                        document.getElementById("retenciones_" + facturaId).value = data.retenciones || '';
+                        document.getElementById("valor_pagar_" + facturaId).value = data.valor_pagar || '';
+                    } else {
+                        alert("No se encontraron datos para este número de Ofimática.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al obtener los datos de la factura:', error);
+                });
+        }
     </script>
 </body>
 </html>

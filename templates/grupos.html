@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,55 +7,152 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
         body {
-            background-color: #f9f9f9;
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
         }
+
+        /* Barra de navegación */
         .navbar {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .container {
-            max-width: 800px;
             background: #fff;
-            border-radius: 10px;
-            padding: 2rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-        h1, h2 {
-            text-align: center;
-            color: #343a40;
-            margin-bottom: 1.5rem;
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #007bff;
         }
-        .btn-primary {
+
+        .navbar-nav .nav-link {
+            font-weight: bold;
+            color: #f28367;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #0056b3;
+        }
+
+        /* Menú lateral */
+        .sidebar {
+            height: 100%;
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #343a40;
+            padding-top: 20px;
+            color: white;
+            box-shadow: 4px 0px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar a {
+            color: white;
+            padding: 12px 20px;
+            text-decoration: none;
             display: block;
-            width: 100%;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
         }
-        table {
-            margin-top: 1.5rem;
+
+        .sidebar a:hover {
+            background-color: #575d63;
         }
-        table thead {
+
+        .sidebar a.active {
             background-color: #007bff;
+            color: white;
+        }
+
+        /* Contenido principal */
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+            margin-top: 60px;  /* Ajuste para que el contenido empiece debajo del navbar */
+        }
+
+        h1 {
+            color: #343a40;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        table {
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        table thead {
+            background-color: #343a40;
             color: #fff;
         }
-        table td, table th {
+
+        table th, table td {
             text-align: center;
             vertical-align: middle;
+            padding: 0.75rem;
         }
-        .form-control {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+        table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        table tr:hover {
+            background-color: #f1f3f5;
+        }
+
+        .form-container {
+            padding: 20px;
+        }
+
+        .form-container h3 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-container button {
+            width: 100%;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .alert {
+            margin-top: 2rem;
+            text-align: center;
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+            padding: 1rem;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-    <!-- Navegación -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container">
-            <a class="navbar-brand" href="/">Sistema de Gestión</a>
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <img src="https://samaracosmetics.com/wp-content/uploads/2019/03/Logo.png" alt="" width="100" height="50" class="d-inline-block align-text-top">
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Facturas</a>
+                        <a class="nav-link" href="/facturas">Facturas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/grupos">Grupos</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/usuarios">Usuarios</a>
@@ -65,23 +162,51 @@
         </div>
     </nav>
 
-    <!-- Contenido Principal -->
-    <div class="container mt-5">
+    <!-- Menú lateral -->
+    <div class="sidebar">
+        <h3 class="text-center text-white">Menú</h3>
+        <a href="/">Inicio</a>
+        <a href="/grupos" class="active">Grupos</a>
+        <a href="/usuarios">Usuarios</a>
+        <a href="/bodega">Bodega</a>
+        <a href="/compras">Compras</a>
+        <a href="/servicios">Servicios</a>
+        <a href="/asignaciones">Asignaciones</a>
+        <a href="/pago_servicios">Pago Servicios</a>
+        <a href="/pago_mp">Pago M.P</a>
+        <a href="/gestion_final">Gestión Final</a>
+        <a href="/tesoreria">Tesoreria</a>
+        <a href="/facturas_resumen">Resumen Facturas</a>
+        <a href="/logout">Logout</a>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="main-content">
         <h1>Gestión de Grupos de Aprobación</h1>
-        <form method="POST" class="mb-4">
-            <div class="mb-3">
-                <label for="grupo" class="form-label">Nombre del Grupo</label>
-                <input type="text" class="form-control" id="grupo" name="grupo" placeholder="Ej: Equipo de Finanzas" required>
-            </div>
-            <div class="mb-3">
-                <label for="descripcion" class="form-label">Descripción</label>
-                <textarea class="form-control" id="descripcion" name="descripcion" rows="3" placeholder="Describa las funciones del grupo"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Crear Grupo</button>
-        </form>
+
+        <!-- Formulario de creación de grupo -->
+        <div class="form-container">
+            <h3>Crear Nuevo Grupo</h3>
+            <form method="POST" class="mb-4">
+                <div class="mb-3">
+                    <label for="grupo" class="form-label">Nombre del Grupo</label>
+                    <input type="text" class="form-control" id="grupo" name="grupo" placeholder="Ej: Equipo de Finanzas" required>
+                </div>
+                <div class="mb-3">
+                    <label for="descripcion" class="form-label">Descripción</label>
+                    <textarea class="form-control" id="descripcion" name="descripcion" rows="3" placeholder="Describa las funciones del grupo" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Crear Grupo</button>
+            </form>
+        </div>
+
         <hr>
+
         <h2>Grupos Registrados</h2>
-        <table class="table table-striped table-hover">
+        
+        <!-- Mostrar tabla si existen grupos -->
+        {% if grupos %}
+        <table class="table table-striped table-bordered">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -99,6 +224,11 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <div class="alert">
+            <strong>No se han registrado grupos aún.</strong>
+        </div>
+        {% endif %}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

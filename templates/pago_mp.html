@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,47 +8,107 @@
     <style>
         body {
             background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
         }
+
         .navbar {
-            margin-bottom: 2rem;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-        .container {
-            max-width: 1200px;
+
+        .navbar-brand {
+            font-weight: bold;
+            color: #007bff;
         }
+
+        .navbar-nav .nav-link {
+            font-weight: bold;
+            color: #f28367;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #0056b3;
+        }
+
         h1 {
             text-align: center;
             color: #343a40;
             margin-bottom: 1.5rem;
         }
-        table {
+
+        .table {
             background-color: #fff;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-        table thead {
+
+        .table thead {
             background-color: #343a40;
             color: #fff;
         }
-        table th,
-        table td {
+
+        .table th, .table td {
             text-align: center;
             vertical-align: middle;
+            padding: 1rem;
         }
-        .btn-success {
+
+        .table-striped tbody tr:nth-child(odd) {
+            background-color: #f8f9fa;
+        }
+
+        .table-striped tbody tr:hover {
+            background-color: #f1f3f5;
+        }
+
+        .badge {
             font-size: 0.9rem;
+            padding: 0.5rem 1rem;
         }
-        .btn-secondary {
-            font-size: 0.9rem;
-        }
-        .alert {
+
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+            padding: 1rem;
+            border-radius: 5px;
             text-align: center;
-            margin-top: 1rem;
+        }
+
+        .btn-sm {
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-success {
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
+        .btn-secondary {
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background-color: #6c757d;
+        }
+
+        .form-container {
+            padding: 2rem;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
         }
     </style>
 </head>
 <body>
-    <!-- Navegación -->
+
+    <!-- Barra de navegación -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container">
             <a class="navbar-brand" href="/">Sistema de Gestión</a>
@@ -75,60 +135,61 @@
     <div class="container">
         <h1>Gestión de Pago de MP</h1>
 
+        <!-- Si existen facturas -->
         {% if facturas %}
-        <table class="table table-striped table-bordered">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>NIT</th>
-                    <th>Número de Factura</th>
-                    <th>Fecha</th>
-                    <th>Clasificación</th>
-                    <th>Archivo</th>
-                    <th>Estado Pago</th>
-                    <th>Hora de Aprobación</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for factura in facturas %}
-                <tr>
-                    <td>{{ factura[0] }}</td>
-                    <td>{{ factura[1] }}</td>
-                    <td>{{ factura[2] }}</td>
-                    <td>{{ factura[3] }}</td>
-                    <td>{{ factura[4] }}</td>
-                    <td>
-                        <a href="{{ url_for('static', filename= 'uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
-                    </td>
-                    <td>
-                        {% if factura[6] == 'Aprobado' %}
-                            <span class="badge bg-success">Aprobado</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Pendiente</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if factura[7] %}
-                            {{ factura[7] }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if factura[6] != 'Aprobado' %}
-                        <form method="POST" action="/pago_mp">
-                            <input type="hidden" name="factura_id" value="{{ factura[0] }}">
-                            <button type="submit" class="btn btn-success btn-sm">Aprobar</button>
-                        </form>
-                        {% else %}
-                        <button class="btn btn-secondary btn-sm" disabled>Aprobada</button>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>NIT</th>
+                        <th>Número de Factura</th>
+                        <th>Fecha</th>
+                        <th>Clasificación</th>
+                        <th>Archivo</th>
+                        <th>Estado Pago</th>
+                        <th>Hora de Aprobación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for factura in facturas %}
+                    <tr>
+                        <td>{{ factura[0] }}</td>
+                        <td>{{ factura[1] }}</td>
+                        <td>{{ factura[2] }}</td>
+                        <td>{{ factura[3] }}</td>
+                        <td>{{ factura[4] }}</td>
+                        <td>
+                            <a href="{{ url_for('static', filename='uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
+                        </td>
+                        <td>
+                            {% if factura[6] == 'Aprobado' %}
+                                <span class="badge bg-success">Aprobado</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Pendiente</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if factura[7] %}
+                                {{ factura[7] }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if factura[6] != 'Aprobado' %}
+                            <form method="POST" action="/pago_mp">
+                                <input type="hidden" name="factura_id" value="{{ factura[0] }}">
+                                <button type="submit" class="btn btn-success btn-sm">Aprobar</button>
+                            </form>
+                            {% else %}
+                            <button class="btn btn-secondary btn-sm" disabled>Aprobada</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         {% else %}
         <div class="alert alert-info">
             <strong>No hay facturas aprobadas pendientes de pago.</strong>
