@@ -104,6 +104,10 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
         }
+        .usuario-logueado { 
+            color: green; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
@@ -118,14 +122,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/asignaciones">Asignaciones</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/pago_mp">Pago de Servicios</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout">Salir</a>
-                    </li>
+                        <a class="nav-link active" href="#">
+                           <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
+                       </a> 
+                   </li>
                 </ul>
             </div>
         </div>
@@ -146,6 +146,8 @@
                         <th>Fecha</th>
                         <th>Clasificación</th>
                         <th>Archivo</th>
+                        <th>Orden Compra</th>
+                        <th>Remisión</th>
                         <th>Estado Pago</th>
                         <th>Hora de Aprobación</th>
                         <th>Acciones</th>
@@ -162,6 +164,10 @@
                         <td>
                             <a href="{{ url_for('static', filename='uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
                         </td>
+                        <td>
+                            <a href="{{ url_for('static', filename='uploads/' + factura[8].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
+                        </td>
+                        <td>{{ factura[9] }}</td>
                         <td>
                             {% if factura[6] == 'Aprobado' %}
                                 <span class="badge bg-success">Aprobado</span>

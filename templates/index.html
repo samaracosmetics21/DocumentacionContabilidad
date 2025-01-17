@@ -121,6 +121,14 @@
             margin-top: 30px;
             color: #6c757d;
         }
+        .usuario-logueado { 
+            color: green; 
+            font-weight: bold; 
+        }
+        .usuario-logueado { 
+            color: green; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
@@ -131,15 +139,16 @@
 
     <!-- Menú Lateral -->
     <div class="sidebar">
+        <h3 class="text-center text-white">Menú</h3>
         <a href="/">Inicio</a>
         <a href="/grupos">Grupos</a>
         <a href="/usuarios">Usuarios</a>
         <a href="/bodega">Bodega</a>
         <a href="/compras">Compras</a>
         <a href="/servicios">Servicios</a>
-        <a href="/asignaciones">Asignaciones</a>
-        <a href="/pago_servicios">Pago Servicios</a>
-        <a href="/pago_mp">Pago M.P</a>
+        <a href="/asignaciones">Mis Asignaciones</a>
+        <a href="/pago_servicios">Aprobación Servicios</a>
+        <a href="/pago_mp">Aprobación M.P</a>
         <a href="/gestion_final">Gestión Final</a>
         <a href="/tesoreria">Tesorería</a> 
         <a href="/facturas_resumen">Resumen Facturas</a>
@@ -149,9 +158,11 @@
     <!-- Contenido Principal -->
     <div class="content">
         <!-- Navegación -->
+        
         <nav class="navbar navbar-expand-lg navbar-light bg-light w-100">
             <div class="container">
                 <a class="navbar-brand" href="/">Sistema de Gestión Documental</a>
+                <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
             </div>
         </nav>
 

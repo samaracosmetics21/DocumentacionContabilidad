@@ -1,0 +1,31 @@
+------consulta para facturas de MP
+SELECT 
+    NRODCTO, 
+    PASSWORDIN, 
+    BRUTO, 
+    IVABRUTO, 
+    VLRETFTE, 
+    VRETICA, 
+    VRETENIVA, 
+    (bruto + IVABRUTO) AS SUBTOTAL, 
+    ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+FROM 
+    TRADE 
+WHERE  
+    NRODCTO LIKE '14662' AND ORIGEN='COM' AND TIPODCTO='FR'
+
+------Consulta para facturas de servicios
+SELECT 
+    NRODCTO, 
+    PASSWORDIN, 
+    BRUTO, 
+    IVABRUTO, 
+    VLRETFTE, 
+    VRETICA, 
+    VRETENIVA, 
+    (bruto + IVABRUTO) AS SUBTOTAL, 
+    ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL 
+FROM 
+    TRADE 
+WHERE  
+    NRODCTO LIKE '14662' AND ORIGEN='COM' AND TIPODCTO='FS'

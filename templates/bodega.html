@@ -142,6 +142,10 @@
         .form-container button {
             width: 100%;
         }
+        .usuario-logueado { 
+            color: green; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
@@ -155,7 +159,13 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto">  
+                    <li class="nav-item">
+                         <a class="nav-link active" href="#">
+                            <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
+                        </a> 
+                    </li>
+                    <!--
                     <li class="nav-item">
                         <a class="nav-link active" href="/bodega">Bodega</a>
                     </li>
@@ -170,7 +180,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/logout">Logout</a>
-                    </li>
+                    </li>-->
                 </ul>
             </div>
         </div>
@@ -182,14 +192,14 @@
         <a href="/">Inicio</a>
         <a href="/grupos">Grupos</a>
         <a href="/usuarios">Usuarios</a>
-        <a href="/bodega" class="active">Bodega</a>
+        <a href="/bodega">Bodega</a>
         <a href="/compras">Compras</a>
         <a href="/servicios">Servicios</a>
-        <a href="/asignaciones">Asignaciones</a>
-        <a href="/pago_servicios">Pago Servicios</a>
-        <a href="/pago_mp">Pago M.P</a>
+        <a href="/asignaciones">Mis Asignaciones</a>
+        <a href="/pago_servicios">Aprobación Servicios</a>
+        <a href="/pago_mp">Aprobación M.P</a>
         <a href="/gestion_final">Gestión Final</a>
-        <a href="/tesoreria">Tesoreria</a>
+        <a href="/tesoreria">Tesorería</a> 
         <a href="/facturas_resumen">Resumen Facturas</a>
         <a href="/logout">Logout</a>
     </div>

@@ -134,6 +134,10 @@
             padding: 1rem;
             border-radius: 5px;
         }
+        .usuario-logueado { 
+            color: green; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
@@ -149,14 +153,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/facturas">Facturas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/grupos">Grupos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/usuarios">Usuarios</a>
-                    </li>
+                        <a class="nav-link active" href="#">
+                           <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
+                       </a> 
+                   </li>
                 </ul>
             </div>
         </div>
@@ -166,16 +166,16 @@
     <div class="sidebar">
         <h3 class="text-center text-white">Menú</h3>
         <a href="/">Inicio</a>
-        <a href="/grupos" class="active">Grupos</a>
+        <a href="/grupos">Grupos</a>
         <a href="/usuarios">Usuarios</a>
         <a href="/bodega">Bodega</a>
         <a href="/compras">Compras</a>
         <a href="/servicios">Servicios</a>
-        <a href="/asignaciones">Asignaciones</a>
-        <a href="/pago_servicios">Pago Servicios</a>
-        <a href="/pago_mp">Pago M.P</a>
+        <a href="/asignaciones">Mis Asignaciones</a>
+        <a href="/pago_servicios">Aprobación Servicios</a>
+        <a href="/pago_mp">Aprobación M.P</a>
         <a href="/gestion_final">Gestión Final</a>
-        <a href="/tesoreria">Tesoreria</a>
+        <a href="/tesoreria">Tesorería</a> 
         <a href="/facturas_resumen">Resumen Facturas</a>
         <a href="/logout">Logout</a>
     </div>

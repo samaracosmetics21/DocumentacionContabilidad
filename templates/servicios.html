@@ -100,6 +100,10 @@
         .form-select {
             font-size: 1rem;
         }
+        .usuario-logueado { 
+            color: green; 
+            font-weight: bold; 
+        }
     </style>
 </head>
 <body>
@@ -110,10 +114,11 @@
             <a class="navbar-brand" href="/">Sistema de Gestión</a>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">Facturas</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/grupos">Grupos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/usuarios">Usuarios</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/servicios">Servicios</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                           <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
+                       </a> 
+                   </li>
                 </ul>
             </div>
         </div>

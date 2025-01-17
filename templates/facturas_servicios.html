@@ -102,11 +102,11 @@
         <a href="/bodega">Bodega</a>
         <a href="/compras">Compras</a>
         <a href="/servicios">Servicios</a>
-        <a href="/asignaciones">Asignaciones</a>
-        <a href="/pago_servicios">Pago Servicios</a>
-        <a href="/pago_mp">Pago M.P</a>
+        <a href="/asignaciones">Mis Asignaciones</a>
+        <a href="/pago_servicios">Aprobación Servicios</a>
+        <a href="/pago_mp">Aprobación M.P</a>
         <a href="/gestion_final">Gestión Final</a>
-        <a href="/tesoreria">Tesorería</a>
+        <a href="/tesoreria">Tesorería</a> 
         <a href="/facturas_resumen">Resumen Facturas</a>
         <a href="/logout">Logout</a>
     </div>
@@ -198,8 +198,12 @@
                                         <a href="{{ url_for('static', filename= 'uploads/' + factura[14].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Orden de Compra</a>
                                         {% else %} No disponible {% endif %}
                                     </td>
-                                    <td>{{ factura[15] }}</td>
-                                    <td>{{ factura[16] }}</td>
+                                    <td> 
+                                        <i class="fas fa-check status-icon status-approved" style="display: {% if factura[15] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
+                                        <i class="fas fa-times status-icon status-denied" style="display: {% if factura[15] == 'Pendiente' %}inline{% else %}none{% endif %}"></i></td>
+                                    <td> 
+                                        <i class="fas fa-check status-icon status-approved" style="display: {% if factura[16] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
+                                        <i class="fas fa-times status-icon status-denied" style="display: {% if factura[16] == 'Pendiente' %}inline{% else %}none{% endif %}"></i></td>
                                     <td>
                                         {% if factura[17] %}
                                         <a href="{{ url_for('static', filename= 'uploads/' + factura[17].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Archivo Pago Banco</a>

@@ -11,7 +11,6 @@ from flask_login import current_user
 from pyodbc import Error
 from flask import jsonify
 import decimal
-import json
 
 
 app = Flask(__name__)
@@ -201,44 +200,15 @@ def gestion_grupos():
     if request.method == "POST":
         grupo = request.form.get("grupo")
         descripcion = request.form.get("descripcion")
-        usuario_id = session.get("user_id")  # Obtener el ID del usuario desde la sesión
-
         try:
             conn_pg = postgres_connection()
             cursor = conn_pg.cursor()
-
-            # Validar si el usuario pertenece al grupo de Contabilidad
-            print("Validando grupo del usuario...")
-            query_validar_grupo = """
-                SELECT g.grupo 
-                FROM usuarios u
-                INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-                WHERE u.id = %s AND g.grupo = 'Contabilidad'
-            """
-            cursor.execute(query_validar_grupo, (usuario_id,))
-            grupo_usuario = cursor.fetchone()
-
-            print("Grupo obtenido:", grupo_usuario)
-
-            if not grupo_usuario:
-                flash("No tienes permisos para gestionar grupos.", "error")
-                print("Error: usuario no pertenece al grupo de Contabilidad.")
-                return redirect("/grupos")
-
-            # Insertar el nuevo grupo en la base de datos
             cursor.execute("INSERT INTO grupo_aprobacion (grupo, descripcion) VALUES (%s, %s)", (grupo, descripcion))
             conn_pg.commit()
             flash("Grupo creado exitosamente", "success")
         except Exception as e:
             flash(f"Error creando grupo: {str(e)}", "error")
-        finally:
-            if cursor:
-                cursor.close()
-            if conn_pg:
-                conn_pg.close()
-
     return render_template("grupos.html")
-
 
 # Gestión de Usuarios
 @app.route("/usuarios", methods=["GET", "POST"])
@@ -263,28 +233,9 @@ def gestion_usuarios():
             correo = request.form.get("correo")
             grupo_id = request.form.get("grupo_aprobacion")
             password = request.form.get("password")
-            usuario_id = session.get("user_id")  # Obtener el ID del usuario desde la sesión
 
             print("Datos recibidos del formulario:")
             print(f"Nombre: {nombre}, Apellido: {apellido}, Usuario: {usuario}, Correo: {correo}, Grupo ID: {grupo_id}")
-
-            # Validar si el usuario pertenece al grupo de Contabilidad
-            print("Validando grupo del usuario...")
-            query_validar_grupo = """
-                SELECT g.grupo 
-                FROM usuarios u
-                INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-                WHERE u.id = %s AND g.grupo = 'Contabilidad'
-            """
-            cursor.execute(query_validar_grupo, (usuario_id,))
-            grupo_usuario = cursor.fetchone()
-
-            print("Grupo obtenido:", grupo_usuario)
-
-            if not grupo_usuario:
-                flash("No tienes permisos para gestionar usuarios.", "error")
-                print("Error: usuario no pertenece al grupo de Contabilidad.")
-                return redirect("/usuarios")
 
             try:
                 # Encriptar la contraseña
@@ -335,7 +286,6 @@ def gestion_usuarios():
     print("Renderizando la plantilla 'usuarios.html'.")
     # Renderizar la plantilla con los grupos
     return render_template("usuarios.html", grupos=grupos)
-
 
 
 @app.route("/bodega", methods=["GET", "POST"])
@@ -882,7 +832,7 @@ def pago_servicios():
         cursor.execute("""
             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, pago_servicios, hora_aprobacion_pago_servicio
             FROM facturas
-            WHERE estado_usuario_asignado = 'Aprobado' and pago_servicios = 'Pendiente'
+            WHERE estado_usuario_asignado = 'Aprobado'
             ORDER BY fecha_seleccionada ASC
         """)
         facturas_aprobadas = cursor.fetchall()
@@ -955,7 +905,7 @@ def pago_mp():
             cursor.execute("""
                 SELECT id, pago_mp
                 FROM facturas
-                WHERE id = %s AND estado_compras = 'Aprobado' 
+                WHERE id = %s AND estado_compras = 'Aprobado'
             """, (factura_id,))
             factura = cursor.fetchone()
             print(f"Resultado de la validación de factura: {factura}")
@@ -998,9 +948,9 @@ def pago_mp():
         # Consultar facturas aprobadas y pendientes de pago de MP
         print("Consultando facturas aprobadas para pago de MP...")
         cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, pago_mp, hora_aprobacion_pago_mp, archivo_remision, remision
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, pago_mp, hora_aprobacion_pago_mp
             FROM facturas
-            WHERE estado_compras = 'Aprobado' and pago_mp = 'Pendiente'
+            WHERE estado_compras = 'Aprobado'
             ORDER BY fecha_seleccionada ASC
         """)
         facturas_aprobadas = cursor.fetchall()
@@ -1038,74 +988,6 @@ def gestion_final():
         flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
         print("Error: sesión no válida o usuario no autenticado.")
         return redirect(url_for("login"))
-
-    # Conexión a PostgreSQL
-    conn_pg = postgres_connection()
-    cursor_pg = conn_pg.cursor()
-
-    if request.method == "POST":
-        # Recoger los valores enviados desde el formulario
-        factura_id = request.form.get("factura_id")
-        numero_ofimatica = request.form.get("numero_ofimatica")
-        password_in = request.form.get("password_in")
-        bruto = request.form.get("bruto")
-        iva_bruto = request.form.get("iva_bruto")
-        vl_retfte = request.form.get("vl_retfte")
-        v_retica = request.form.get("v_retica")
-        v_reteniva = request.form.get("v_reteniva")
-        subtotal = request.form.get("subtotal")
-        total = request.form.get("total")
-        clasificacion_final = request.form.get("clasificacion_final")
-        abonos = request.form.get("abonos")
-        retenciones = request.form.get("retenciones")
-        valor_pagar = request.form.get("valor_pagar")
-
-        # Establecer el estado final a 'Aprobado'
-        estado_final = 'Aprobado'
-
-        print(f"Facture ID: {factura_id}, Numero Ofimatica: {numero_ofimatica}, Abonos: {abonos}, Retenciones: {retenciones}, Valor a Pagar: {valor_pagar}")
-
-        try:
-            # Definir la consulta SQL para la actualización de la factura
-            update_query = """
-                UPDATE facturas
-                SET numero_ofimatica = %s,
-                    password_in = %s,
-                    bruto = %s,
-                    iva_bruto = %s,
-                    vl_retfte = %s,
-                    v_retica = %s,
-                    v_reteniva = %s,
-                    subtotal = %s,
-                    total = %s,
-                    clasificacion_final = %s,
-                    abonos = %s,
-                    retenciones = %s,
-                    valor_pagar = %s,
-                    estado_final = %s,
-                    usuario_update_final = %s,
-                    hora_actualizacion_final = CURRENT_TIMESTAMP
-                WHERE id = %s
-            """
-
-            # Ejecutar la consulta SQL con los valores recibidos desde el formulario
-            cursor_pg.execute(update_query, (
-                numero_ofimatica, password_in, bruto, iva_bruto, vl_retfte, v_retica, v_reteniva, subtotal, total, clasificacion_final, abonos, retenciones, valor_pagar, estado_final, usuario_id, factura_id
-            ))
-
-            print("Consulta SQL:", "UPDATE facturas SET estado = %s WHERE id = %s")
-            print("Parámetros:", (estado_final, factura_id))
-
-            # Confirmar los cambios en la base de datos
-            conn_pg.commit()
-            flash("Factura actualizada exitosamente.", "success")
-            print(f"Factura {factura_id} actualizada correctamente.")
-
-        except Exception as e:
-            # En caso de error, mostrar mensaje y hacer rollback
-            flash(f"Hubo un error al actualizar la factura: {e}", "error")
-            conn_pg.rollback()
-            print(f"Error al actualizar la factura: {e}")
 
     cursor_sql = None  # Inicializar cursor_sql antes de usarlo
     conn_sql = None  # Inicializar conn_sql antes de usarlo
@@ -1234,7 +1116,7 @@ def gestion_final():
             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
                    pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp
             FROM facturas
-            WHERE pago_servicios = 'Aprobado' OR pago_mp = 'Aprobado' and estado_final = 'Pendiente' order by id
+            WHERE pago_servicios = 'Aprobado' OR pago_mp = 'Aprobado'
         """
         print(f"Consulta SQL que se ejecutará: {query_facturas_aprobadas}")
         
@@ -1362,246 +1244,6 @@ def buscar_ofimatica(numero_ofimatica):
         return jsonify({"error": "Error interno al procesar la solicitud."}), 500
 
 
-@app.route("/tesoreria", methods=["GET", "POST"])
-@login_required
-def tesoreria():
-    print("Iniciando vista para vincular documentos a un archivo PDF...")
-
-    # Obtener el ID del usuario autenticado desde la sesión
-    usuario_id = session.get("user_id")
-    if not usuario_id:
-        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
-        return redirect(url_for("login"))
-
-    # Validar si el usuario pertenece al grupo de Contabilidad o Jefe_MP
-    try:
-        conn_pg = postgres_connection()
-        cursor = conn_pg.cursor()
-
-        print("Validando grupo del usuario...")
-        query_validar_grupo = """
-            SELECT g.grupo 
-            FROM usuarios u
-            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-            WHERE u.id = %s AND (g.grupo = 'Contabilidad' OR g.grupo = 'jefe_servicios' or g.grupo = 'jefe_mp' or g.grupo = 'tesoreria')
-        """
-        cursor.execute(query_validar_grupo, (usuario_id,))
-        grupo_usuario = cursor.fetchone()
-
-        print("Grupo obtenido:", grupo_usuario)
-
-        if not grupo_usuario:
-            flash("No tienes permisos para acceder a Tesorería.", "error")
-            print("Error: usuario no pertenece al grupo de Contabilidad o Jefe_MP.")
-            return redirect("/")
-
-    except Exception as e:
-        flash(f"Error al validar el grupo del usuario: {e}", "error")
-        print(f"Error al validar el grupo del usuario: {e}")
-    finally:
-        if cursor:
-            cursor.close()
-        if conn_pg:
-            conn_pg.close()
-
-    if request.method == "POST":
-        archivo_pdf = request.files.get("archivo_pdf")
-
-        # Validar si se ha subido un archivo PDF
-        if not archivo_pdf:
-            flash("Por favor, sube un archivo PDF.", "error")
-            return render_template("tesoreria.html")
-
-        print(f"Archivo recibido: {archivo_pdf.filename}")
-
-        # Guardar el archivo PDF
-        directorio_base = os.path.join(app.config['UPLOAD_FOLDER'], 'Pagos')
-        if not os.path.exists(directorio_base):
-            os.makedirs(directorio_base)
-
-        # Guardar el archivo PDF en la nueva carpeta "Pagos"
-        archivo_nombre = archivo_pdf.filename  # Nombre del archivo (ej. archivo.pdf)
-        archivo_path = os.path.join('Pagos', archivo_nombre)  # Guardar solo la ruta relativa
-        archivo_pdf.save(os.path.join(directorio_base, archivo_nombre))
-        print(f"Archivo guardado en: {archivo_path}")
-
-        try:
-            # Conexión a SQL Server para buscar los documentos de los últimos 30 días
-            conn_sql_server = sql_server_connection()
-            cursor_sql_server = conn_sql_server.cursor()
-
-            # Consultar los documentos de los últimos 45 días
-            query_sql_server = """
-                SELECT 
-                LTRIM(RTRIM(dcto)) AS dcto,
-                LTRIM(RTRIM(fecha)) AS fecha,
-                LTRIM(RTRIM(cheque)) AS cheque,
-                LTRIM(RTRIM(nit)) AS nit,
-                LTRIM(RTRIM(PASSWORDIN)) AS PASSWORDIN,
-                LTRIM(RTRIM(valor)) AS valor,
-                LTRIM(RTRIM(tipodcto)) AS tipodcto,
-                LTRIM(RTRIM(factura)) AS factura
-            FROM ABOCXP
-            WHERE fecha >= DATEADD(DAY, -30, GETDATE()) AND tipodcto='CE' 
-            ORDER BY factura
-            """
-            print(f"Ejecutando consulta SQL Server: {query_sql_server}")
-            cursor_sql_server.execute(query_sql_server)
-            documentos = cursor_sql_server.fetchall()
-
-            # Si no se encontraron documentos, mostrar mensaje
-            if not documentos:
-                flash("No se encontraron documentos en los últimos 30 días.", "error")
-                return render_template("tesoreria.html")
-
-            print(f"Documentos encontrados: {len(documentos)}")
-
-            # Procesamos los documentos para pasarlos a la plantilla
-            documentos_encontrados = [{
-                "dcto": dcto,
-                "fecha": fecha,
-                "cheque": cheque,
-                "nit": nit,
-                "passwordin": passwordin,
-                "valor": valor,
-                "tipodcto": tipodcto,
-                "factura": factura
-            } for dcto, fecha, cheque, nit, passwordin, valor, tipodcto, factura in documentos]
-
-            # Mostrar los documentos encontrados antes de enviarlos
-            print(f"Documentos procesados para plantilla: {len(documentos_encontrados)}")
-
-            # Asegurarse de que la respuesta sea un JSON
-            return jsonify({
-                "documentos": documentos_encontrados,
-                "archivo_path": archivo_path,
-                "num_documentos": len(documentos_encontrados)
-            })
-
-        except Exception as e:
-            flash(f"Ocurrió un error al buscar los documentos: {e}", "error")
-            print(f"Error en la consulta SQL Server: {e}")
-
-        finally:
-            if cursor_sql_server:
-                cursor_sql_server.close()
-            if conn_sql_server:
-                conn_sql_server.close()
-
-    return render_template("tesoreria.html")
-
-
-@app.route("/guardar_documentos", methods=["POST"])
-def guardar_documentos():
-    try:
-        # Obtener la ruta del archivo y los documentos seleccionados
-        archivo_path = request.form.get("archivo_path")
-        print(f'ruta del archivo jesus: {archivo_path}')
-        selected_documents_json = request.form.get("selectedDocuments")  # Obtener los documentos seleccionados (en formato JSON)
-
-        # Deserializar el JSON
-        if selected_documents_json:
-            selected_documents = json.loads(selected_documents_json)
-
-        print(f"Ruta del archivo: {archivo_path}")
-        print(f"Documentos seleccionados: {selected_documents}")
-
-        # Conexión a PostgreSQL
-        conn_pg = postgres_connection()
-        cursor_pg = conn_pg.cursor()
-
-        # Iterar sobre los documentos seleccionados
-        for doc in selected_documents:
-            dcto = doc['dcto']
-            factura = doc['factura']
-            print(f'Dcto: {dcto}, Factura: {factura}')
-
-            # Realizar el UPDATE en la tabla facturas (con los valores correctos de 'dcto' y 'factura')
-            update_query = """
-                UPDATE facturas
-                SET dctos = %s, archivo_pdf = %s
-                WHERE numero_ofimatica = %s
-            """
-            cursor_pg.execute(update_query, (dcto, archivo_path, str(factura)))
-
-        # Confirmar los cambios
-        conn_pg.commit()
-
-        flash("Documentos vinculados correctamente a las facturas.", "success")
-        return redirect(url_for("tesoreria"))
-
-    except Exception as e:
-        flash(f"Ocurrió un error al guardar los documentos: {e}", "error")
-        print(f"Error: {e}")
-
-    finally:
-        if cursor_pg:
-            cursor_pg.close()
-        if conn_pg:
-            conn_pg.close()
-
-    return render_template("tesoreria.html")
-
-
-@app.route("/facturas_resumen", methods=["GET"])
-@login_required
-def facturas_servicios():
-    conn_pg = postgres_connection()
-    cursor = conn_pg.cursor()
-
-    try:
-        # Ejecutar la consulta para obtener las facturas con los campos especificados
-        cursor.execute("""
-            SELECT 
-                f.nit, 
-                f.nombre, 
-                f.numero_factura,
-                f.fecha_seleccionada, 
-                f.fecha_registro, 
-                f.clasificacion, 
-                f.archivo_path,
-                f.hora_aprobacion as aprobacion_bodega, 
-                f.estado as estado_aprobacion_bodega, 
-                COALESCE(u.usuario, '') as usuario_aprueba_bodega,  -- Si no hay nombre de usuario, muestra vacío
-                f.estado_compras,
-                f.hora_aprobacion_compras,
-                COALESCE(u1.usuario, '') as usuario_aprueba_compras, 
-                f.remision,
-                f.archivo_remision as orden_compra,
-                f.pago_mp as estado_aprobacion_jefe_mp, 
-                f.estado_final as estado_final_contabilizado,
-                f.archivo_pdf as archivo_pago_banco, 
-                f.dctos as comprobantes_egresos, 
-                COALESCE(u3.usuario, '') as usuario_asignado_servicios, 
-                COALESCE(u2.usuario, '') as usuario_asigno_contabilidad,
-                f.estado_usuario_asignado as estado_aprobacion_user_servi,
-                f.hora_aprobacion_asignado as hora_aprobacion_user_servicio, 
-                f.pago_servicios as aprobacion_jefe_servicios,
-                f.hora_aprobacion_pago_servicio as hora_aprobacion_jefe_servicio,
-                f.valor_pagar
-            FROM facturas f
-            LEFT JOIN usuarios u ON f.aprobado_bodega = u.id  
-            LEFT JOIN usuarios u1 ON f.aprobado_compras = u1.id  
-            LEFT JOIN usuarios u2 ON f.aprobado_servicios = u2.id 
-            LEFT JOIN usuarios u3 ON f.usuario_asignado_servicios = u3.id 
-            --WHERE clasificacion = 'Servicios' AND estado = 'Pendiente'
-            --ORDER BY fecha_seleccionada ASC
-        """)
-        facturas = cursor.fetchall()
-
-    except Exception as e:
-        flash(f"Error al consultar las facturas: {str(e)}", "error")
-        facturas = []
-
-    finally:
-        if cursor:
-            cursor.close()
-        if conn_pg:
-            conn_pg.close()
-
-    return render_template("facturas_servicios.html", facturas=facturas)
-
-
 
 
 
@@ -1615,4 +1257,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(host='10.1.200.30', port=2837, debug=True)
+    app.run(host='0.0.0.0', port=2837, debug=True)

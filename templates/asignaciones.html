@@ -100,6 +100,11 @@
             margin-top: 3rem;
             color: #6c757d;
         }
+        .usuario-logueado { 
+            color: green; 
+            font-weight: bold; 
+        }
+
     </style>
 </head>
 <body>
@@ -113,14 +118,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Inicio</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/facturas">Facturas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/asignaciones">Asignaciones</a>
-                    </li>
+                        <a class="nav-link active" href="#">
+                           <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
+                       </a> 
+                   </li>
                 </ul>
             </div>
         </div>

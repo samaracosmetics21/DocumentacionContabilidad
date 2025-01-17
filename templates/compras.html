@@ -119,6 +119,10 @@
         .form-container button {
             width: 100%;
         }
+        .usuario-logueado { 
+            color: green; 
+            font-weight: bold; 
+        }
 
     </style>
 </head>
@@ -133,17 +137,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Facturas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/grupos">Grupos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/usuarios">Usuarios</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/compras">Compras</a>
-                    </li>
+                        <a class="nav-link active" href="#">
+                           <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
+                       </a> 
+                   </li>
                 </ul>
             </div>
         </div>
