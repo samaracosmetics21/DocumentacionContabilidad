@@ -20,7 +20,7 @@ def postgres_connection():
             dbname="contabilidad",
             user="postgres",
             password="$amara%21.",
-            host="127.0.0.1",
+            host="10.1.200.30",
             port="5432"
         )
         print("Conexión exitosa a PostgreSQL")
