@@ -140,6 +140,7 @@
                     <th>Número de Factura</th>
                     <th>Fecha</th>
                     <th>Clasificación</th>
+                    <th>Factura</th>
                     <th>Estado Asignado</th>
                     <th>Hora de Aprobación</th>
                     <th>Acciones</th>
@@ -153,6 +154,13 @@
                     <td>{{ factura[2] }}</td>
                     <td>{{ factura[3] }}</td>
                     <td>{{ factura[4] }}</td>
+                    <td>
+                        {% if factura[5] %}  
+                            <a href="{{ url_for('static', filename='uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Archivo</a>
+                        {% else %}
+                            No disponible
+                        {% endif %}
+                    </td>
                     <td>
                         {% if factura[7] == 'Aprobado' %}
                             <span class="badge bg-success">Aprobado</span>
