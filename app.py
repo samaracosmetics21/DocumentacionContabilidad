@@ -125,6 +125,13 @@ def index():
                 raise Exception("Conexión a PostgreSQL fallida. Verifica los parámetros de conexión en db_config.py.")
             print("Conexión exitosa a PostgreSQL dentro de Flask")
             cursor_pg = conn_pg.cursor()
+
+            # Verificar si ya existe un registro con el mismo número de factura
+            cursor_pg.execute("SELECT COUNT(*) FROM facturas WHERE numero_factura = %s", (numero_factura,))
+            count = cursor_pg.fetchone()[0]
+            if count > 0:
+                flash("La factura con este número ya ha sido registrada", "error")
+                return redirect(request.url)
             fecha_registro = datetime.now()
             print("Datos a insertar en PostgreSQL:")
             print(f"NIT: {nit}")
