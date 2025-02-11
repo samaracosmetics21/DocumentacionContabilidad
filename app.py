@@ -357,51 +357,47 @@ def gestion_bodega():
         if request.method == "POST":
             # Obtener datos del formulario
             usuario_id = request.form.get("usuario_id")
-            factura_id = request.form.get("factura_id")
-
-            # Validar usuario_id
-            if not usuario_id or not usuario_id.isdigit():
-                flash("El ID del usuario no es válido.", "error")
-                return redirect("/bodega")
-            if not factura_id or not factura_id.isdigit():
-                print(f"ID de factura inválido: {factura_id}") 
-                flash("El ID de la factura no es válido.", "error")
-                return redirect("/bodega")
-
-            # Verificar si la factura existe y está pendiente
-            cursor_pg.execute("""
-                SELECT id FROM facturas WHERE id = %s AND estado = 'Pendiente'
-            """, (factura_id,))
-            factura = cursor_pg.fetchone()
-
-            if not factura:
-                flash("El ID de la factura no es válido o no está pendiente.", "error")
-                return redirect("/bodega")
-
-            # Validar si el usuario pertenece al grupo de aprobadores de bodega
-            cursor_pg.execute("""
-                SELECT g.grupo 
-                FROM usuarios u 
-                INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-                WHERE u.id = %s AND g.grupo = 'Bodega'
-            """, (usuario_id,))
-            grupo = cursor_pg.fetchone()
-
-            if not grupo:
-                flash("No tienes permisos para aprobar facturas en Bodega", "error")
-                return redirect("/bodega")
-
-            # Procesar las acciones de los botones
+            
+            # Asegúrate de obtener la factura_id de la orden correspondiente
+            # Esto dependerá de la acción de la orden
             accion = request.form.get("accion")
-
-            # Extraer el ID de la orden de compra o factura desde el nombre del botón
             if accion:
                 if accion.startswith("aprobar_"):
                     orden_id = accion.split("_")[1]  # Obtener el ID de la orden de compra
 
-                    # Obtener la factura seleccionada
+                    # Obtener la factura_id para esta orden de compra específica
                     factura_id = request.form.get(f"factura_id_{orden_id}")
                     if factura_id:
+                        # Validar factura_id
+                        if not factura_id.isdigit():
+                            print(f"ID de factura inválido: {factura_id}") 
+                            flash("El ID de la factura no es válido.", "error")
+                            return redirect("/bodega")
+
+                        # Verificar si la factura existe y está pendiente
+                        cursor_pg.execute("""
+                            SELECT id FROM facturas WHERE id = %s AND estado = 'Pendiente'
+                        """, (factura_id,))
+                        factura = cursor_pg.fetchone()
+
+                        if not factura:
+                            flash("El ID de la factura no es válido o no está pendiente.", "error")
+                            return redirect("/bodega")
+
+                        # Validar si el usuario pertenece al grupo de aprobadores de bodega
+                        cursor_pg.execute("""
+                            SELECT g.grupo 
+                            FROM usuarios u 
+                            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+                            WHERE u.id = %s AND g.grupo = 'Bodega'
+                        """, (usuario_id,))
+                        grupo = cursor_pg.fetchone()
+
+                        if not grupo:
+                            flash("No tienes permisos para aprobar facturas en Bodega", "error")
+                            return redirect("/bodega")
+
+                        # Procesar las acciones de los botones
                         # Recoger lotes para cada referencia seleccionada
                         lotes_oc = []
                         referencias_seleccionadas = request.form.getlist(f"referencias_oc_{orden_id}")
@@ -409,10 +405,10 @@ def gestion_bodega():
                             lote = request.form.get(f"lotes_{orden_id}_{referencia_numero}")
                             if lote:
                                 lotes_oc.append(f"{referencia_numero}:{lote}")
-                        
+
                         # Unir los lotes seleccionados con comas
                         lotes_oc_str = ",".join(lotes_oc) if lotes_oc else None
-                        
+
                         # Actualizar el estado de la factura a 'Aprobado' y registrar los lotes
                         hora_aprobacion = datetime.now()
                         cursor_pg.execute("""
@@ -431,7 +427,6 @@ def gestion_bodega():
                     orden_id = accion.split("_")[2]  # Obtener el ID de la orden de compra
 
                     # Cerrar la orden de compra (actualizar estado a 'Aprobado')
-                    # En este caso no necesitamos la factura_id, por lo que no la obtenemos.
                     cursor_pg.execute("""
                         UPDATE ordenes_compras
                         SET estado = 'Aprobado'
@@ -485,7 +480,6 @@ def gestion_bodega():
         print(f"Órdenes de compra pendientes obtenidas: {len(ordenes_compras)} registros.")
         
         # Obtener las facturas pendientes de las órdenes de compra
-        # Obtener las facturas pendientes de las órdenes de compra
         facturas_pendientes = {}
         for orden in ordenes_compras:
             nit_oc = orden[1]  # Extraer el NIT de la orden de compra
@@ -503,11 +497,10 @@ def gestion_bodega():
 
             print(f"Facturas encontradas para NIT {nit_oc} en Postgresql: {len(facturas_pg)} registros.")
 
-            # Si se encuentran facturas, agregarlas al diccionario
             if facturas_pg:
                 facturas_pendientes[orden[0]] = facturas_pg
             else:
-                print(f"No se encontraron facturas para NIT {nit_oc} en Postgresql.")
+                print(f"No se encontraron facturas para NIT {nit_oc} en PostgreSQL.")
 
             # Obtener las referencias dinámicamente para el nrodcto_oc específico
             print(f"Obteniendo las referencias para el NRODCTO {nrodcto_oc} desde PostgreSQL...")
@@ -554,6 +547,7 @@ def gestion_bodega():
         facturas_pendientes=facturas_pendientes, 
         referencias=referencias_dict
     )
+
 
 @app.route("/compras", methods=["GET", "POST"])
 @login_required
