@@ -452,7 +452,7 @@ def gestion_bodega():
             return render_template("bodega.html", ordenes_compras=ordenes_compras, facturas_pendientes=facturas_pendientes, referencias=referencias_dict)
 
         # Extraer solo los NRODCTO de las órdenes aprobadas
-        nrodcto_aprobadas = [orden[0] for orden in ordenes_aprobadas_sql]
+        nrodcto_aprobadas = [orden[0].strip() for orden in ordenes_aprobadas_sql]
 
         # Consultar las órdenes de compra en PostgreSQL que estén pendientes y coincidan con los NRODCTO aprobados en SQL Server
         print("Consultando órdenes de compra pendientes en PostgreSQL...")
