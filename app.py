@@ -474,10 +474,12 @@ def gestion_bodega():
         print(f"Órdenes de compra pendientes obtenidas: {len(ordenes_compras)} registros.")
         
         # Obtener las facturas pendientes de las órdenes de compra
+        # Obtener las facturas pendientes de las órdenes de compra
         facturas_pendientes = {}
         for orden in ordenes_compras:
             nit_oc = orden[1]  # Extraer el NIT de la orden de compra
-            print(f"Consultando facturas para NIT: {nit_oc} en SQL Server...")
+            nrodcto_oc = orden[2]  # Extraer el NRODCTO de la orden de compra
+            print(f"Consultando facturas para NIT: {nit_oc} en PostgreSQL...")
 
             cursor_pg.execute("""
                 SELECT fac.id, fac.numero_factura, fac.fecha_seleccionada
@@ -495,27 +497,29 @@ def gestion_bodega():
                 facturas_pendientes[orden[0]] = facturas_pg
             else:
                 print(f"No se encontraron facturas para NIT {nit_oc} en Postgresql.")
-        
-        # Obtener las referencias dinámicamente desde PostgreSQL
-        print("Obteniendo las referencias dinámicamente desde PostgreSQL...")
-        cursor_pg.execute("""
-            SELECT numero_referencia_oc, nombre_referencia_oc 
-            FROM ordenes_compras
-            ORDER BY numero_referencia_oc
-        """)
-        referencias = cursor_pg.fetchall()
+            
+            # Obtener las referencias dinámicamente para el nrodcto_oc específico
+            print(f"Obteniendo las referencias para el NRODCTO {nrodcto_oc} desde PostgreSQL...")
+            cursor_pg.execute("""
+                SELECT numero_referencia_oc, nombre_referencia_oc 
+                FROM ordenes_compras
+                WHERE nrodcto_oc = %s
+                ORDER BY numero_referencia_oc
+            """, (nrodcto_oc,))  # Filtrar solo por el nrodcto_oc actual
+            referencias = cursor_pg.fetchall()
 
-        print(f"Referencias obtenidas: {len(referencias)} registros.")
-        
-        # Convertir la lista de tuplas en un diccionario
-        referencias_dict = {}
-        for referencia in referencias:
-            numeros_referencia = referencia[0].split(",")  # Separar las referencias por coma
-            nombres_referencia = referencia[1].split(",")  # Separar los nombres por coma
-            for num, nombre in zip(numeros_referencia, nombres_referencia):
-                referencias_dict[num.strip()] = nombre.strip()
+            print(f"Referencias obtenidas para NRODCTO {nrodcto_oc}: {len(referencias)} registros.")
+            
+            # Convertir la lista de tuplas en un diccionario
+            referencias_dict = {}
+            for referencia in referencias:
+                numeros_referencia = referencia[0].split(",")  # Separar las referencias por coma
+                nombres_referencia = referencia[1].split(",")  # Separar los nombres por coma
+                for num, nombre in zip(numeros_referencia, nombres_referencia):
+                    referencias_dict[num.strip()] = nombre.strip()
 
-        print("Proceso completo de validación y cruce de datos finalizado.")
+            print(f"Referencias para NRODCTO {nrodcto_oc} procesadas.")
+
 
     except Exception as e:
         print(f"Error en la gestión de bodega: {str(e)}")
