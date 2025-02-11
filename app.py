@@ -363,7 +363,6 @@ def gestion_bodega():
             if not usuario_id or not usuario_id.isdigit():
                 flash("El ID del usuario no es válido.", "error")
                 return redirect("/bodega")
-            
             if not factura_id or not factura_id.isdigit():
                 flash("El ID de la factura no es válido.", "error")
                 return redirect("/bodega")
@@ -409,7 +408,7 @@ def gestion_bodega():
                             UPDATE facturas
                             SET estado = 'Aprobado', 
                                 hora_aprobacion = %s, 
-                                aprobado_bodega = %s
+                                aprobado_bodega = %s  
                             WHERE id = %s
                         """, (hora_aprobacion, usuario_id, factura_id))
                         conn_pg.commit()
@@ -483,7 +482,7 @@ def gestion_bodega():
             cursor_sql.execute("""
                 SELECT fac.id, fac.numero_factura, fac.fecha_seleccionada
                 FROM facturas fac
-                INNER JOIN ordenes_compras oc ON TRIM(oc.nit_oc) = TRIM(fac.nit)
+                INNER JOIN ordenes_compras oc ON oc.nit_oc = fac.nit
                 WHERE fac.estado = 'Pendiente' AND oc.estado = 'Pendiente' AND oc.nit_oc = %s
                 ORDER BY fac.fecha_seleccionada ASC
             """, (nit_oc,))
@@ -541,8 +540,6 @@ def gestion_bodega():
         facturas_pendientes=facturas_pendientes, 
         referencias=referencias_dict
     )
-
-
 
 @app.route("/compras", methods=["GET", "POST"])
 @login_required
