@@ -415,9 +415,10 @@ def gestion_bodega():
                             UPDATE facturas
                             SET estado = 'Aprobado', 
                                 hora_aprobacion = %s, 
-                                aprobado_bodega = %s  
+                                aprobado_bodega = %s,
+                                lotes_oc = %s  -- Se agrega el campo 'lotes_oc' a la actualización
                             WHERE id = %s
-                        """, (hora_aprobacion, usuario_id, factura_id))
+                        """, (hora_aprobacion, usuario_id, lotes_oc_str, factura_id))
                         conn_pg.commit()
                         flash("Factura aprobada exitosamente", "success")
                     else:
@@ -547,6 +548,7 @@ def gestion_bodega():
         facturas_pendientes=facturas_pendientes, 
         referencias=referencias_dict
     )
+
 
 
 @app.route("/compras", methods=["GET", "POST"])
