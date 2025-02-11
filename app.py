@@ -479,22 +479,22 @@ def gestion_bodega():
             nit_oc = orden[1]  # Extraer el NIT de la orden de compra
             print(f"Consultando facturas para NIT: {nit_oc} en SQL Server...")
 
-            cursor_sql.execute("""
+            cursor_pg.execute("""
                 SELECT fac.id, fac.numero_factura, fac.fecha_seleccionada
                 FROM facturas fac
                 INNER JOIN ordenes_compras oc ON oc.nit_oc = fac.nit
                 WHERE fac.estado = 'Pendiente' AND oc.estado = 'Pendiente' AND oc.nit_oc = %s
                 ORDER BY fac.fecha_seleccionada ASC
             """, (nit_oc,))
-            facturas_sql = cursor_sql.fetchall()
+            facturas_pg = cursor_pg.fetchall()
 
-            print(f"Facturas encontradas para NIT {nit_oc} en SQL Server: {len(facturas_sql)} registros.")
+            print(f"Facturas encontradas para NIT {nit_oc} en Postgresql: {len(facturas_pg)} registros.")
 
             # Si se encuentran facturas, agregarlas al diccionario
-            if facturas_sql:
-                facturas_pendientes[orden[0]] = facturas_sql
+            if facturas_pg:
+                facturas_pendientes[orden[0]] = facturas_pg
             else:
-                print(f"No se encontraron facturas para NIT {nit_oc} en SQL Server.")
+                print(f"No se encontraron facturas para NIT {nit_oc} en Postgresql.")
         
         # Obtener las referencias dinámicamente desde PostgreSQL
         print("Obteniendo las referencias dinámicamente desde PostgreSQL...")
