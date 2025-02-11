@@ -352,6 +352,7 @@ def gestion_bodega():
     conn_sql = sql_server_connection()  # Conexión a SQL Server
     cursor_pg = conn_pg.cursor()
     cursor_sql = conn_sql.cursor()
+    referencias_dict = {}
 
     try:
         if request.method == "POST":
