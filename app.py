@@ -497,6 +497,7 @@ def gestion_bodega():
                 facturas_pendientes[orden[0]] = facturas_pg
             else:
                 print(f"No se encontraron facturas para NIT {nit_oc} en Postgresql.")
+
             
             # Obtener las referencias dinámicamente para el nrodcto_oc específico
             print(f"Obteniendo las referencias para el NRODCTO {nrodcto_oc} desde PostgreSQL...")
