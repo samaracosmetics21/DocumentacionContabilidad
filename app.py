@@ -484,7 +484,7 @@ def gestion_bodega():
             cursor_pg.execute("""
                 SELECT fac.id, fac.numero_factura, fac.fecha_seleccionada
                 FROM facturas fac
-                INNER JOIN ordenes_compras oc ON oc.nit_oc = fac.nit
+                INNER JOIN ordenes_compras oc ON TRIM(oc.nit_oc) = TRIM(fac.nit)
                 WHERE fac.estado = 'Pendiente' AND oc.estado = 'Pendiente' AND oc.nit_oc = %s
                 ORDER BY fac.fecha_seleccionada ASC
             """, (nit_oc,))
