@@ -364,6 +364,7 @@ def gestion_bodega():
                 flash("El ID del usuario no es válido.", "error")
                 return redirect("/bodega")
             if not factura_id or not factura_id.isdigit():
+                print(f"ID de factura inválido: {factura_id}") 
                 flash("El ID de la factura no es válido.", "error")
                 return redirect("/bodega")
 
