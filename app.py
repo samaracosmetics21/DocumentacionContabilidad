@@ -357,10 +357,15 @@ def gestion_bodega():
         if request.method == "POST":
             # Obtener datos del formulario
             usuario_id = request.form.get("usuario_id")
+            factura_id = request.form.get("factura_id")
 
             # Validar usuario_id
             if not usuario_id or not usuario_id.isdigit():
                 flash("El ID del usuario no es válido.", "error")
+                return redirect("/bodega")
+            
+            if not factura_id or not factura_id.isdigit():
+                flash("El ID de la factura no es válido.", "error")
                 return redirect("/bodega")
 
             # Validar si el usuario pertenece al grupo de aprobadores de bodega
@@ -404,10 +409,9 @@ def gestion_bodega():
                             UPDATE facturas
                             SET estado = 'Aprobado', 
                                 hora_aprobacion = %s, 
-                                aprobado_bodega = %s,
-                                lotes_oc = %s
+                                aprobado_bodega = %s
                             WHERE id = %s
-                        """, (hora_aprobacion, usuario_id, lotes_oc_str, factura_id))
+                        """, (hora_aprobacion, usuario_id, factura_id))
                         conn_pg.commit()
                         flash("Factura aprobada exitosamente", "success")
                     else:
@@ -433,7 +437,7 @@ def gestion_bodega():
             FROM trade
             WHERE origen = 'COM' 
             AND TIPODCTO = 'OC' 
-            AND TRIM(autorizado) = 'RRQ07'
+            AND TRIM(autorizpor) = 'RRQ07'
         """)
         ordenes_aprobadas_sql = cursor_sql.fetchall()
 
