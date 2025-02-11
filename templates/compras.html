@@ -162,6 +162,7 @@
                     <th>Archivo</th>
                     <th>Estado Compras</th>
                     <th>Hora de Aprobación</th>
+                    <th>Referencia vs Lote</th> <!-- Nueva columna -->
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -191,6 +192,18 @@
                         {% endif %}
                     </td>
                     <td>
+                        {% if factura[8] %}
+                            <!-- Mostrar los lotes en formato de lista -->
+                            <ul>
+                                {% for lote in factura[8].split(',') %}
+                                    <li>{{ lote }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span>No hay lotes</span>
+                        {% endif %}
+                    </td>
+                    <td>
                         {% if factura[6] == 'Pendiente' %}
                         <form method="POST" action="/compras" enctype="multipart/form-data" onsubmit="return validarFormulario();">
                             <input type="hidden" name="usuario_id" id="usuario_id" value="{{ session['user_id'] }}">
@@ -213,6 +226,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        
         {% else %}
         <div class="alert alert-info">
             <strong>No hay facturas pendientes en Compras.</strong>

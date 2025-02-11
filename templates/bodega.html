@@ -4,278 +4,182 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Bodega</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Arial', sans-serif;
-        }
-
-        /* Barra de navegación */
-        .navbar {
-            background: #fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar-brand {
-            font-weight: bold;
-            font-size: 1.2rem;
-            color: #007bff;
-        }
-
-        .navbar-nav .nav-link {
-            font-weight: bold;
-            color: #f28367;
-        }
-
-        .navbar-nav .nav-link:hover {
-            color: #0056b3;
-        }
-
-        /* Menú lateral */
-        .sidebar {
-            height: 100%;
-            width: 250px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            background-color: #343a40;
-            padding-top: 20px;
-            color: white;
-            box-shadow: 4px 0px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .sidebar a {
-            color: white;
-            padding: 12px 20px;
-            text-decoration: none;
-            display: block;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-
-        .sidebar a:hover {
-            background-color: #575d63;
-        }
-
-        .sidebar a.active {
-            background-color: #007bff;
-            color: white;
-        }
-
-        /* Contenido principal */
-        .main-content {
-            margin-left: 250px;
-            padding: 2rem;
-            margin-top: 60px;  /* Ajuste para que el contenido empiece debajo del navbar */
-        }
-
-        h1 {
-            color: #343a40;
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        table {
-            background-color: #fff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        table thead {
-            background-color: #343a40;
-            color: #fff;
-        }
-
-        table th, table td {
-            text-align: center;
-            vertical-align: middle;
-            padding: 0.75rem;
-        }
-
-        table tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-
-        table tr:hover {
-            background-color: #f1f3f5;
-        }
-
-        .badge {
-            font-size: 0.9rem;
-            padding: 0.5rem 1rem;
-        }
-
-        .btn-sm {
-            font-size: 0.875rem;
-            padding: 0.5rem 1rem;
-        }
-
-        .btn-success {
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-success:hover {
-            background-color: #218838;
-        }
-
-        .alert {
-            margin-top: 2rem;
-            text-align: center;
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border-color: #bee5eb;
-            padding: 1rem;
-            border-radius: 5px;
-        }
-
-        .form-container {
-            padding: 20px;
-        }
-
-        .form-container h3 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .form-container button {
-            width: 100%;
-        }
-        .usuario-logueado { 
-            color: green; 
-            font-weight: bold; 
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <!-- Barra de navegación -->
-    <nav class="navbar navbar-expand-lg navbar-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../index.html">
-                <img src="https://samaracosmetics.com/wp-content/uploads/2019/03/Logo.png" alt="" width="100" height="50" class="d-inline-block align-text-top">
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">  
-                    <li class="nav-item">
-                         <a class="nav-link active" href="#">
-                            <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
-                        </a> 
-                    </li>
-                    <!--
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/bodega">Bodega</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/compras">Compras</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/servicios">Servicios</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/asignaciones">Asignaciones</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout">Logout</a>
-                    </li>-->
-                </ul>
+    <div class="container mt-4">
+        <h2>Gestión de Bodega</h2>
+
+        <!-- Mensajes de flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="alert alert-{{ messages[0][0] }}">
+                {{ messages[0][1] }}
             </div>
-        </div>
-    </nav>
-
-    <!-- Menú lateral -->
-    <div class="sidebar">
-        <h3 class="text-center text-white">Menú</h3>
-        <a href="/">Inicio</a>
-        <a href="/grupos">Grupos</a>
-        <a href="/usuarios">Usuarios</a>
-        <a href="/bodega">Bodega</a>
-        <a href="/compras">Compras</a>
-        <a href="/servicios">Servicios</a>
-        <a href="/asignaciones">Mis Asignaciones</a>
-        <a href="/pago_servicios">Aprobación Servicios</a>
-        <a href="/pago_mp">Aprobación M.P</a>
-        <a href="/gestion_final">Gestión Final</a>
-        <a href="/tesoreria">Tesorería</a> 
-        <a href="/facturas_resumen">Resumen Facturas</a>
-        <a href="/logout">Logout</a>
-    </div>
-
-    <!-- Contenido principal -->
-    <div class="main-content">
-        <h1>Facturas Pendientes en Bodega</h1>
-
-        {% if facturas %}
-        <table class="table table-striped table-bordered">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>NIT</th>
-                    <th>Número de Factura</th>
-                    <th>Fecha</th>
-                    <th>Clasificación</th>
-                    <th>Archivo</th>
-                    <th>Estado</th>
-                    <th>Hora de Aprobación</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for factura in facturas %}
-                <tr>
-                    <td>{{ factura[0] }}</td>
-                    <td>{{ factura[1] }}</td>
-                    <td>{{ factura[2] }}</td>
-                    <td>{{ factura[3] }}</td>
-                    <td>{{ factura[4] }}</td>
-                    <td>
-                        <a href="{{ url_for('static', filename='uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
-                    </td>
-                    <td>
-                        {% if factura[6] == 'Aprobado' %}
-                            <span class="badge bg-success">Aprobado</span>
-                        {% else %}
-                            <span class="badge bg-secondary">No Aprobada</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if factura[6] == 'Aprobado' %}
-                            {{ factura[7] }}
-                        {% else %}
-                            - 
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form method="POST" action="/bodega" onsubmit="return validarFormulario();">
-                            <input type="hidden" name="usuario_id" id="usuario_id" value="{{ session['user_id'] }}">
-                            <input type="hidden" name="factura_id" value="{{ factura[0] }}">
-                            <button type="submit" class="btn btn-success btn-sm">Aprobar</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="alert">
-            <strong>No hay facturas pendientes en Bodega.</strong>
-        </div>
         {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/bodega" onsubmit="return validarFormulario();">
+            <input type="hidden" name="usuario_id" id="usuario_id" value="{{ session['user_id'] }}">
+        
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID Orden</th>
+                        <th>Producto OC</th>
+                        <th>Cliente OC</th>
+                        <th>Cantidad OC</th>
+                        <th>Estado OC</th>
+                        <th>Factura</th>
+                        <th>Referencia</th>
+                        <th>Lote</th>
+                        <th>Archivo</th>  <!-- Nueva columna "Archivo" -->
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for orden in ordenes_compras %}
+                    <tr>
+                        <td>{{ orden[0] }}</td>
+                        <td>{{ orden[2] }}</td>
+                        <td>{{ orden[3] }}</td>
+                        <td>{{ orden[4] }}</td>
+                        <td>
+                            {% if orden[5] == 'Pendiente' %}
+                                <span class="badge bg-warning">Pendiente</span>
+                            {% else %}
+                                <span class="badge bg-success">Aprobada</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <select name="factura_id_{{ orden[0] }}" class="form-control">
+                                <option value="">Seleccione una factura</option>
+                                {% for factura in facturas_pendientes[orden[0]] %}
+                                    <option value="{{ factura[0] }}">{{ factura[1] }} - {{ factura[2] }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <div>
+                                {% for referencia_numero, referencia_nombre in referencias.items() %}
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="referencias_oc_{{ orden[0] }}" value="{{ referencia_numero }}" id="referencia_{{ orden[0] }}_{{ referencia_numero }}" onclick="mostrarLotes('{{ orden[0] }}', '{{ referencia_numero }}')">
+                                        <label class="form-check-label" for="referencia_{{ orden[0] }}_{{ referencia_numero }}">
+                                            {{ referencia_numero }} - {{ referencia_nombre }}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>
+                            <div id="lotes_{{ orden[0] }}"></div>
+                        </td>
+                        <!-- Nueva columna "Archivo" -->
+                        <td>
+                            {% if orden[6] %}
+                                <a href="{{ url_for('static', filename='uploads/' + orden[6].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
+                            {% else %}
+                                <span>No disponible</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <!-- Botones de Acción -->
+                            <button type="submit" name="accion" value="aprobar_{{ orden[0] }}" class="btn btn-success btn-sm mt-3">Aprobar Seleccionadas</button>
+                            <button type="submit" name="accion" value="cerrar_orden_{{ orden[0] }}" class="btn btn-danger btn-sm mt-3">Cerrar Orden Compra</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+        </form>
+      
+        
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function validarFormulario() {
-            const usuarioId = document.getElementById('usuario_id').value;
-            if (!usuarioId) {
-                alert('Error: El ID del usuario no está definido. Por favor, recargue la página.');
-                return false;
+        // Función para manejar los lotes dinámicamente
+        $("input[name^='referencias_oc_']").on("change", function() {
+            var ordenId = $(this).data("orden-id"); // Obtener ID de orden desde el atributo data-orden-id
+            var numeroReferencia = $(this).data("referencia-numero"); // Obtener el número de referencia desde data-referencia-numero
+            var loteContainer = $("#lotes_" + ordenId); // Obtener contenedor de lotes para esta orden
+
+            if ($(this).is(":checked")) {
+                // Agregar un input para el lote si la referencia está seleccionada
+                loteContainer.append(
+                    '<div class="mb-2" id="lote-container-' + ordenId + '-' + numeroReferencia + '">' +
+                        '<label for="lote_' + ordenId + '_' + numeroReferencia + '">Lote de ' + numeroReferencia + ':</label>' +
+                        '<input type="text" name="lote_' + ordenId + '_' + numeroReferencia + '" class="form-control" placeholder="Ingrese lote" id="lote_' + ordenId + '_' + numeroReferencia + '">' +
+                    '</div>'
+                );
+            } else {
+                // Eliminar el input del lote si la referencia se desmarca
+                $("#lote-container-" + ordenId + "-" + numeroReferencia).remove();
             }
-            return true;
+        });
+
+        // Función para validar el formulario
+                function validarFormulario() {
+            var valido = true;
+
+            // Validar si la acción es 'aprobar'
+            if ($("button[name^='aprobar_']").length) {
+                $("select[name^='factura_id']").each(function() {
+                    if (!$(this).val()) {
+                        alert("Debes seleccionar una factura para cada orden.");
+                        valido = false;
+                        return false;
+                    }
+                });
+            }
+            
+            // Para la acción de cerrar orden, solo preguntar si está seguro
+            if ($("button[name^='cerrar_orden_']").length) {
+                var confirmar = confirm("¿Estás seguro de que deseas cerrar esta orden de compra?");
+                if (!confirmar) {
+                    valido = false; // Si el usuario cancela, no se envía el formulario
+                }
+            }
+
+            return valido;
         }
+
+
+          
+                    function mostrarLotes(orden_id) {
+                // Obtener el div de lotes correspondiente
+                let lotesDiv = document.getElementById("lotes_" + orden_id);
+                
+                // Limpiar lotes antes de agregar nuevos
+                lotesDiv.innerHTML = "";
+
+                // Recorrer todas las referencias seleccionadas
+                let referenciasSeleccionadas = document.querySelectorAll("input[name='referencias_oc_" + orden_id + "']:checked");
+                
+                // Para cada referencia seleccionada, crear un input para el lote
+                referenciasSeleccionadas.forEach(function(referenciaCheckbox) {
+                    let referencia_numero = referenciaCheckbox.value;
+
+                    // Crear un elemento de texto o un label con el número de referencia
+                    let referenciaLabel = document.createElement("label");
+                    referenciaLabel.textContent = "Referencia: " + referencia_numero;
+                    referenciaLabel.classList.add("form-label");
+                    lotesDiv.appendChild(referenciaLabel);
+
+                    // Crear un campo para ingresar el lote
+                    let inputLote = document.createElement("input");
+                    inputLote.type = "text";
+                    inputLote.name = "lotes_" + orden_id + "_" + referencia_numero;
+                    inputLote.placeholder = "Ingrese lote para referencia " + referencia_numero;
+                    inputLote.classList.add("form-control");
+                    lotesDiv.appendChild(inputLote);
+                });
+            }
+
+
     </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

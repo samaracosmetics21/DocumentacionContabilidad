@@ -348,71 +348,197 @@ def gestion_usuarios():
 @app.route("/bodega", methods=["GET", "POST"])
 @login_required
 def gestion_bodega():
-    conn_pg = postgres_connection()
-    cursor = conn_pg.cursor()
+    conn_pg = postgres_connection()  # Conexión a PostgreSQL
+    conn_sql = sql_server_connection()  # Conexión a SQL Server
+    cursor_pg = conn_pg.cursor()
+    cursor_sql = conn_sql.cursor()
 
     try:
         if request.method == "POST":
             # Obtener datos del formulario
             usuario_id = request.form.get("usuario_id")
-            factura_id = request.form.get("factura_id")
 
-            # Validar usuario_id y factura_id
+            # Validar usuario_id
             if not usuario_id or not usuario_id.isdigit():
                 flash("El ID del usuario no es válido.", "error")
                 return redirect("/bodega")
 
-            if not factura_id or not factura_id.isdigit():
-                flash("El ID de la factura no es válido.", "error")
-                return redirect("/bodega")
-
             # Validar si el usuario pertenece al grupo de aprobadores de bodega
-            cursor.execute("""
+            cursor_pg.execute("""
                 SELECT g.grupo 
                 FROM usuarios u 
                 INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
                 WHERE u.id = %s AND g.grupo = 'Bodega'
             """, (usuario_id,))
-            grupo = cursor.fetchone()
+            grupo = cursor_pg.fetchone()
 
             if not grupo:
                 flash("No tienes permisos para aprobar facturas en Bodega", "error")
                 return redirect("/bodega")
 
-            # Aprobar la factura y actualizar la hora de aprobación
-            try:
-                hora_aprobacion = datetime.now()
-                cursor.execute("""
-                    UPDATE facturas
-                    SET estado = 'Aprobado', hora_aprobacion = %s, aprobado_bodega = %s
-                    WHERE id = %s
-                """, (hora_aprobacion, usuario_id, factura_id))
-                conn_pg.commit()
-                flash("Factura aprobada exitosamente", "success")
-            except Exception as e:
-                conn_pg.rollback()
-                flash(f"Error aprobando factura: {str(e)}", "error")
+            # Procesar las acciones de los botones
+            accion = request.form.get("accion")
 
-        # Consultar facturas pendientes
-        cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado 
-            FROM facturas
-            WHERE clasificacion = 'Facturas' AND estado = 'Pendiente'
-            ORDER BY fecha_seleccionada ASC
+            # Extraer el ID de la orden de compra o factura desde el nombre del botón
+            if accion:
+                if accion.startswith("aprobar_"):
+                    orden_id = accion.split("_")[1]  # Obtener el ID de la orden de compra
+
+                    # Obtener la factura seleccionada
+                    factura_id = request.form.get(f"factura_id_{orden_id}")
+                    if factura_id:
+                        # Recoger lotes para cada referencia seleccionada
+                        lotes_oc = []
+                        referencias_seleccionadas = request.form.getlist(f"referencias_oc_{orden_id}")
+                        for referencia_numero in referencias_seleccionadas:
+                            lote = request.form.get(f"lotes_{orden_id}_{referencia_numero}")
+                            if lote:
+                                lotes_oc.append(f"{referencia_numero}:{lote}")
+                        
+                        # Unir los lotes seleccionados con comas
+                        lotes_oc_str = ",".join(lotes_oc) if lotes_oc else None
+                        
+                        # Actualizar el estado de la factura a 'Aprobado' y registrar los lotes
+                        hora_aprobacion = datetime.now()
+                        cursor_pg.execute("""
+                            UPDATE facturas
+                            SET estado = 'Aprobado', 
+                                hora_aprobacion = %s, 
+                                aprobado_bodega = %s,
+                                lotes_oc = %s
+                            WHERE id = %s
+                        """, (hora_aprobacion, usuario_id, lotes_oc_str, factura_id))
+                        conn_pg.commit()
+                        flash("Factura aprobada exitosamente", "success")
+                    else:
+                        flash("Debe seleccionar una factura para aprobar", "error")
+
+                elif accion.startswith("cerrar_orden_"):
+                    orden_id = accion.split("_")[2]  # Obtener el ID de la orden de compra
+
+                    # Cerrar la orden de compra (actualizar estado a 'Aprobado')
+                    # En este caso no necesitamos la factura_id, por lo que no la obtenemos.
+                    cursor_pg.execute("""
+                        UPDATE ordenes_compras
+                        SET estado = 'Aprobado'
+                        WHERE id = %s
+                    """, (orden_id,))
+                    conn_pg.commit()
+                    flash("Orden de compra cerrada exitosamente", "success")
+
+        # Consultar órdenes de compra aprobadas desde SQL Server (trade)
+        print("Consultando órdenes de compra aprobadas desde SQL Server...")
+        cursor_sql.execute("""
+            SELECT NRODCTO 
+            FROM trade
+            WHERE origen = 'COM' 
+            AND TIPODCTO = 'OC' 
+            AND TRIM(autorizado) = 'RRQ07'
         """)
-        facturas = cursor.fetchall()
+        ordenes_aprobadas_sql = cursor_sql.fetchall()
+
+        print(f"Órdenes de compra aprobadas encontradas: {len(ordenes_aprobadas_sql)} registros.")
+        
+        # Si no se encuentran órdenes aprobadas en SQL Server, no continuar con la validación
+        if not ordenes_aprobadas_sql:
+            print("No se encontraron órdenes aprobadas en SQL Server.")
+            ordenes_compras = []
+            facturas_pendientes = {}
+            referencias_dict = {}
+            return render_template("bodega.html", ordenes_compras=ordenes_compras, facturas_pendientes=facturas_pendientes, referencias=referencias_dict)
+
+        # Extraer solo los NRODCTO de las órdenes aprobadas
+        nrodcto_aprobadas = [orden[0] for orden in ordenes_aprobadas_sql]
+
+        # Consultar las órdenes de compra en PostgreSQL que estén pendientes y coincidan con los NRODCTO aprobados en SQL Server
+        print("Consultando órdenes de compra pendientes en PostgreSQL...")
+        cursor_pg.execute("""
+            SELECT 
+                oc.id AS orden_compra_id, 
+                oc.nit_oc, 
+                oc.nrodcto_oc, 
+                oc.nombre_cliente_oc, 
+                oc.cantidad_oc, 
+                oc.estado AS estado_oc,
+                oc.archivo_path_oc
+            FROM ordenes_compras oc
+            WHERE oc.estado = 'Pendiente' 
+            AND oc.nrodcto_oc IN %s
+            ORDER BY oc.nrodcto_oc ASC
+        """, (tuple(nrodcto_aprobadas),))  # Usar los NRODCTO aprobados en la consulta
+        ordenes_compras = cursor_pg.fetchall()
+
+        print(f"Órdenes de compra pendientes obtenidas: {len(ordenes_compras)} registros.")
+        
+        # Obtener las facturas pendientes de las órdenes de compra
+        facturas_pendientes = {}
+        for orden in ordenes_compras:
+            nit_oc = orden[1]  # Extraer el NIT de la orden de compra
+            print(f"Consultando facturas para NIT: {nit_oc} en SQL Server...")
+
+            cursor_sql.execute("""
+                SELECT fac.id, fac.numero_factura, fac.fecha_seleccionada
+                FROM facturas fac
+                INNER JOIN ordenes_compras oc ON TRIM(oc.nit_oc) = TRIM(fac.nit)
+                WHERE fac.estado = 'Pendiente' AND oc.estado = 'Pendiente' AND oc.nit_oc = %s
+                ORDER BY fac.fecha_seleccionada ASC
+            """, (nit_oc,))
+            facturas_sql = cursor_sql.fetchall()
+
+            print(f"Facturas encontradas para NIT {nit_oc} en SQL Server: {len(facturas_sql)} registros.")
+
+            # Si se encuentran facturas, agregarlas al diccionario
+            if facturas_sql:
+                facturas_pendientes[orden[0]] = facturas_sql
+            else:
+                print(f"No se encontraron facturas para NIT {nit_oc} en SQL Server.")
+        
+        # Obtener las referencias dinámicamente desde PostgreSQL
+        print("Obteniendo las referencias dinámicamente desde PostgreSQL...")
+        cursor_pg.execute("""
+            SELECT numero_referencia_oc, nombre_referencia_oc 
+            FROM ordenes_compras
+            ORDER BY numero_referencia_oc
+        """)
+        referencias = cursor_pg.fetchall()
+
+        print(f"Referencias obtenidas: {len(referencias)} registros.")
+        
+        # Convertir la lista de tuplas en un diccionario
+        referencias_dict = {}
+        for referencia in referencias:
+            numeros_referencia = referencia[0].split(",")  # Separar las referencias por coma
+            nombres_referencia = referencia[1].split(",")  # Separar los nombres por coma
+            for num, nombre in zip(numeros_referencia, nombres_referencia):
+                referencias_dict[num.strip()] = nombre.strip()
+
+        print("Proceso completo de validación y cruce de datos finalizado.")
 
     except Exception as e:
+        print(f"Error en la gestión de bodega: {str(e)}")
         flash(f"Error en la gestión de bodega: {str(e)}", "error")
-        facturas = []
+        ordenes_compras = []
+        facturas_pendientes = {}
+        referencias_dict = {}
 
     finally:
-        if cursor:
-            cursor.close()
+        if cursor_pg:
+            cursor_pg.close()
+        if cursor_sql:
+            cursor_sql.close()
         if conn_pg:
             conn_pg.close()
+        if conn_sql:
+            conn_sql.close()
 
-    return render_template("bodega.html", facturas=facturas)
+    return render_template(
+        "bodega.html", 
+        ordenes_compras=ordenes_compras, 
+        facturas_pendientes=facturas_pendientes, 
+        referencias=referencias_dict
+    )
+
+
 
 @app.route("/compras", methods=["GET", "POST"])
 @login_required
@@ -533,7 +659,7 @@ def gestion_compras():
         # Consultar facturas pendientes en compras
         print("Consultando facturas pendientes en Compras...")
         cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_compras, hora_aprobacion_compras
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_compras, hora_aprobacion_compras, lotes_oc
             FROM facturas
             WHERE clasificacion = 'Facturas' AND estado_compras = 'Pendiente'
             ORDER BY fecha_seleccionada ASC
@@ -659,7 +785,7 @@ def gestion_servicios():
 
         # Consultar facturas pendientes
         cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado 
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado, nombre 
             FROM facturas
             WHERE clasificacion = 'Servicios' AND estado = 'Pendiente'
             ORDER BY fecha_seleccionada ASC
@@ -1607,6 +1733,179 @@ def facturas_servicios():
             conn_pg.close()
 
     return render_template("facturas_servicios.html", facturas=facturas)
+
+
+@app.route('/buscar_orden', methods=['GET'])
+def buscar_orden():
+    query = request.args.get('q', '')  
+    if query:
+        try:
+            conn = sql_server_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    trade.nrodcto, 
+                    trade.NIT, 
+                    mtprocli.nombre AS nombre_cliente
+                FROM 
+                    trade
+                INNER JOIN 
+                    mtprocli ON trade.nit = mtprocli.nit
+                WHERE 
+                    trade.nrodcto LIKE ?
+                    AND trade.ORIGEN = 'COM' 
+                    AND trade.tipodcto = 'OC'
+            """, ('%' + query + '%',))  # Buscar coincidencias
+            results = cursor.fetchall()
+            
+            ordenes = [{
+                'nrodcto': row[0],
+                'nit': row[1],
+                'nombre_cliente': row[2]
+            } for row in results]
+
+            return jsonify(ordenes)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    return jsonify([])  
+ 
+
+
+@app.route("/gestion_inicial_mp", methods=["GET", "POST"])
+def gestion_inicial():
+    # Verificar si el usuario está logueado y pertenece al grupo "Compras"
+    usuario_id = session.get("user_id")
+    if not usuario_id:
+        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
+        return redirect(url_for("login"))
+
+    try:
+        # Conectar a la base de datos PostgreSQL para validar el grupo
+        conn_pg = postgres_connection()
+        cursor_pg = conn_pg.cursor()
+
+        cursor_pg.execute("""
+            SELECT g.grupo
+            FROM usuarios u
+            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id
+            WHERE u.id = %s AND g.grupo = 'Compras'
+        """, (usuario_id,))
+        grupo = cursor_pg.fetchone()
+
+        if not grupo:
+            flash("No tienes permisos para acceder a esta funcionalidad. Debes ser parte del grupo 'Compras'.", "error")
+            return redirect("/")
+
+    except Exception as e:
+        flash(f"Error al verificar el grupo del usuario: {str(e)}", "error")
+        return redirect(request.url)
+
+    if request.method == "POST":
+        # Procesar los datos del formulario y eliminar espacios de las variables
+        nrodcto_oc = request.form.get("nrodcto", "").strip() or "Valor por defecto"  # Asignar un valor por defecto si está vacío
+        nit_oc = request.form.get("nit", "").strip() or "0000000000"  # Asignar un valor por defecto si está vacío
+        nombre_cliente_oc = request.form.get("nombre_cliente", "").strip() or "Cliente Desconocido"  # Asignar un valor por defecto
+        cantidad_oc = request.form.get("cantidad", "").strip() or 0  # Asignar 0 si está vacío
+        archivo = request.files.get("orden_compra")
+
+        print(f"Datos recibidos: nrodcto_oc={nrodcto_oc}, nit_oc={nit_oc}, nombre_cliente_oc={nombre_cliente_oc}, "
+              f"cantidad_oc={cantidad_oc}")
+
+        # Validación del archivo
+        if not archivo or not archivo.filename:
+            flash("Debes subir un archivo PDF", "error")
+            return redirect(request.url)
+
+        # Crear la jerarquía de directorios: clasificacion/nit/fecha
+        fecha_directorio = datetime.now().strftime("%Y%m%d")
+        ruta_directorio = os.path.join(app.config["UPLOAD_FOLDER"], nit_oc, fecha_directorio)
+        os.makedirs(ruta_directorio, exist_ok=True)  # Crear directorios si no existen
+        print(f"Ruta del directorio creada: {ruta_directorio}")
+
+        # Guardar el archivo en la ruta definida
+        archivo_path = os.path.join(ruta_directorio, archivo.filename)
+        archivo.save(archivo_path)
+        print(f"Archivo guardado en: {archivo_path}")
+
+        # Calcular la ruta relativa desde el directorio 'static/uploads'
+        ruta_relativa_oc = os.path.relpath(archivo_path, app.config["UPLOAD_FOLDER"])
+        print(f"Ruta relativa del archivo: {ruta_relativa_oc}")
+
+        # Consultar datos del número de orden en SQL Server
+        try:
+            conn_sql = sql_server_connection()
+            cursor_sql = conn_sql.cursor()
+            cursor_sql.execute("""
+                SELECT 
+                    trade.nrodcto, 
+                    trade.bruto, 
+                    trade.IVABRUTO, 
+                    trade.NIT, 
+                    mtprocli.nombre, 
+                    mvtrade.CANTIDAD, 
+                    mvtrade.nombre AS nombre_referencia, 
+                    mvtrade.producto AS numero_referencia
+                FROM 
+                    trade
+                INNER JOIN 
+                    mvtrade ON trade.nrodcto = mvtrade.nrodcto
+                INNER JOIN 
+                    mtprocli ON trade.nit = mtprocli.nit
+                WHERE 
+                    trade.nrodcto = ? 
+                    AND trade.ORIGEN = 'COM' 
+                    AND trade.tipodcto = 'OC' 
+                    AND mvtrade.ORIGEN = 'COM' 
+                    AND mvtrade.tipodcto = 'OC'
+            """, (nrodcto_oc,))  # Usar nrodcto_oc sin espacios
+            rows = cursor_sql.fetchall()  # Obtener todas las filas de resultados
+
+            if rows:
+                # Desestructurar el primer resultado
+                nrodcto, bruto_oc, ivabruto_oc, nit_oc, nombre_cliente_oc, cantidad_oc, nombre_referencia_oc, numero_referencia_oc = rows[0]
+
+                # Unir las referencias con coma y quitar espacios
+                nombre_referencia_oc = ",".join([row[6].strip() for row in rows if row[6]])  # 'nombre_referencia' es la columna 6
+                numero_referencia_oc = ",".join([str(row[7]).strip() for row in rows if row[7]])  # 'numero_referencia' es la columna 7
+
+                # Mostrar las referencias concatenadas
+                print(f"Nombre referencias: {nombre_referencia_oc}")
+                print(f"Número referencias: {numero_referencia_oc}")
+            else:
+                flash("No se encontró la orden de compra en SQL Server", "error")
+                print(f"No se encontró la orden de compra con nrodcto: {nrodcto_oc}")
+                return redirect(request.url)
+        except Exception as e:
+            flash(f"Error consultando la orden en SQL Server: {str(e)}", "error")
+            print(f"Error al consultar en SQL Server: {str(e)}")
+            return redirect(request.url)
+
+        # Guardar datos en PostgreSQL
+        try:
+            # Obtener la hora actual
+            hora_actual_oc = datetime.now()
+
+            cursor_pg.execute("""
+                INSERT INTO ordenes_compras (nrodcto_oc, bruto_oc, ivabruto_oc, nit_oc, nombre_cliente_oc, 
+                                            cantidad_oc, nombre_referencia_oc, numero_referencia_oc, archivo_path_oc, 
+                                            hora_registro_oc, usuario_id_oc) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                nrodcto_oc, bruto_oc, ivabruto_oc, nit_oc, nombre_cliente_oc, cantidad_oc, 
+                nombre_referencia_oc, numero_referencia_oc, ruta_relativa_oc, hora_actual_oc, usuario_id
+            ))
+
+            conn_pg.commit()
+            flash("Orden de compra registrada exitosamente", "success")
+            print("Orden de compra registrada exitosamente en PostgreSQL")
+
+        except Exception as e:
+            flash(f"Error al guardar en PostgreSQL: {str(e)}", "error")
+            print(f"Error al guardar en PostgreSQL: {str(e)}")
+            return redirect(request.url)
+
+    return render_template("gestion_inicial.html")
 
 
 

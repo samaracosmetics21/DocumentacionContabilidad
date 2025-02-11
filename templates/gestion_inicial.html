@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Facturas</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            background-color: #f4f7fc;
+        }
+        .form-container {
+            margin-top: 30px;
+        }
+        .list-group-item {
+            cursor: pointer;
+        }
+        .list-group-item:hover {
+            background-color: #f1f1f1;
+        }
+        .footer-text {
+            text-align: center;
+            margin-top: 30px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container form-container">
+        <h2>Registro Ordenes Compras</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="nrodcto" class="form-label">Número de Orden</label>
+                <input type="text" id="nrodcto" name="nrodcto" class="form-control" placeholder="Escribe el número de orden" oninput="buscarOrdenes()" required>
+                <div id="sugerencias" class="list-group" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+            </div>
+            
+            <!-- Campos de solo lectura que se llenarán al seleccionar una orden -->
+            <div class="mb-3">
+                <label for="nit" class="form-label">NIT</label>
+                <input type="text" id="nit" name="nit" class="form-control" readonly>
+            </div>
+            <div class="mb-3">
+                <label for="nombre_cliente" class="form-label">Nombre Cliente</label>
+                <input type="text" id="nombre_cliente" name="nombre_cliente" class="form-control" readonly>
+            </div>
+            <div class="mb-3">
+                <label for="orden_compra" class="form-label">Orden de Compra (PDF)</label>
+                <input type="file" id="orden_compra" name="orden_compra" class="form-control" accept=".pdf" required>
+            </div>
+
+            <!-- Campos ocultos para enviar al backend -->
+            <input type="hidden" id="nrodcto_oc" name="nrodcto_oc">
+            <input type="hidden" id="nit_oc" name="nit_oc">
+            <input type="hidden" id="nombre_cliente_oc" name="nombre_cliente_oc">
+            <input type="hidden" id="cantidad_oc" name="cantidad_oc" value="0">
+            <input type="hidden" id="nombre_referencia_oc" name="nombre_referencia_oc" value="None">
+            <input type="hidden" id="numero_referencia_oc" name="numero_referencia_oc" value="None">
+
+            <button type="submit" class="btn btn-primary">Registrar</button>
+        </form>
+    </div>
+
+    <div class="footer-text">
+        <small>&copy; 2025 Sistema de Gestión Documental</small>
+    </div>
+
+    <script>
+        // Función para realizar la búsqueda de órdenes de compra
+        function buscarOrdenes() {
+            let nrodcto = document.getElementById("nrodcto").value.trim();
+
+            if (nrodcto.length >= 3) {  
+                $.ajax({
+                    url: '/buscar_orden',  // Ruta del backend que maneja la búsqueda
+                    type: 'GET',
+                    data: { q: nrodcto },  // Parámetro de búsqueda
+                    success: function(response) {
+                        const sugerencias = document.getElementById("sugerencias");
+                        sugerencias.innerHTML = "";
+                        if (response.length > 0) {
+                            sugerencias.style.display = "block";
+                            response.forEach(orden => {
+                                const div = document.createElement("div");
+                                div.classList.add("list-group-item");
+                                div.textContent = `Orden: ${orden.nrodcto} - ${orden.nombre_cliente}`;  
+                                div.onclick = function() {
+                                    // Llenar los campos con los datos de la orden seleccionada
+                                    document.getElementById("nrodcto").value = orden.nrodcto;
+                                    document.getElementById("nit").value = orden.nit;
+                                    document.getElementById("nombre_cliente").value = orden.nombre_cliente;
+                                    
+                                    // Llenar los campos ocultos
+                                    document.getElementById("nrodcto_oc").value = orden.nrodcto;
+                                    document.getElementById("nit_oc").value = orden.nit;
+                                    document.getElementById("nombre_cliente_oc").value = orden.nombre_cliente;
+                                    
+                                    // Si hay información adicional, se puede completar más adelante
+                                    document.getElementById("cantidad_oc").value = orden.cantidad_oc || 0;
+                                    document.getElementById("nombre_referencia_oc").value = orden.nombre_referencia_oc || "None";
+                                    document.getElementById("numero_referencia_oc").value = orden.numero_referencia_oc || "None";
+                                    
+                                    sugerencias.style.display = "none";  // Ocultar las sugerencias
+                                };
+                                sugerencias.appendChild(div);
+                            });
+                        } else {
+                            sugerencias.style.display = "none";  // Ocultar si no hay sugerencias
+                        }
+                    },
+                    error: function() {
+                        alert("Error al realizar la búsqueda. Intente nuevamente.");
+                    }
+                });
+            } else {
+                document.getElementById("sugerencias").style.display = "none";  // Ocultar las sugerencias si la longitud del texto es menor que 3
+            }
+        }
+    </script>
+</body>
+</html>
