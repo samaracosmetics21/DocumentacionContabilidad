@@ -9,177 +9,35 @@
 </head>
 <body>
     <div class="container mt-4">
-        <h2>Gestión de Bodega</h2>
+        <h1>Gestión de Bodega</h1>
+        <form method="POST" action="/bodega">
+            <div class="row">
+                {% for orden in ordenes_compras %}
+                    <div class="col-md-4">
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ orden[3] }}</h5>
+                                <p class="card-text">NRODCTO: {{ orden[2] }}</p>
+                                <p class="card-text">Cantidad: {{ orden[4] }}</p>
 
-        <!-- Mensajes de flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="alert alert-{{ messages[0][0] }}">
-                {{ messages[0][1] }}
-            </div>
-        {% endif %}
-        {% endwith %}
-
-        <form method="POST" action="/bodega" onsubmit="return validarFormulario();">
-            <input type="hidden" name="usuario_id" id="usuario_id" value="{{ session['user_id'] }}">
-        
-            <table class="table table-striped table-bordered">
-                <thead>
-                    <tr>
-                        <th>ID Orden</th>
-                        <th>Producto OC</th>
-                        <th>Cliente OC</th>
-                        <th>Cantidad OC</th>
-                        <th>Estado OC</th>
-                        <th>Factura</th>
-                        <th>Referencia</th>
-                        <th>Lote</th>
-                        <th>Archivo</th>  <!-- Nueva columna "Archivo" -->
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for orden in ordenes_compras %}
-                    <tr>
-                        <td>{{ orden[0] }}</td>
-                        <td>{{ orden[2] }}</td>
-                        <td>{{ orden[3] }}</td>
-                        <td>{{ orden[4] }}</td>
-                        <td>
-                            {% if orden[5] == 'Pendiente' %}
-                                <span class="badge bg-warning">Pendiente</span>
-                            {% else %}
-                                <span class="badge bg-success">Aprobada</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <select name="factura_id_{{ orden[0] }}" class="form-control">
-                                <option value="">Seleccione una factura</option>
-                                {% for factura in facturas_pendientes[orden[0]] %}
-                                    <option value="{{ factura[0] }}">{{ factura[1] }} - {{ factura[2] }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                        <td>
-                            <div>
-                                {% for referencia_numero, referencia_nombre in referencias.items() %}
-                                    <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="referencias_oc_{{ orden[0] }}" value="{{ referencia_numero }}" id="referencia_{{ orden[0] }}_{{ referencia_numero }}" onclick="mostrarLotes('{{ orden[0] }}', '{{ referencia_numero }}')">
-                                        <label class="form-check-label" for="referencia_{{ orden[0] }}_{{ referencia_numero }}">
-                                            {{ referencia_numero }} - {{ referencia_nombre }}
-                                        </label>
-                                    </div>
-                                {% endfor %}
+                                <select name="factura_id_{{ orden[0] }}" class="form-control">
+                                    <option value="">Seleccione una factura</option>
+                                    {% for factura in facturas_pendientes[orden[0]] %}
+                                        <option value="{{ factura[0] }}">{{ factura[1] }} - {{ factura[2] }}</option>
+                                    {% endfor %}
+                                </select>
+                                
+                                <div class="form-group mt-3">
+                                    <button type="submit" name="accion" value="aprobar_{{ orden[0] }}" class="btn btn-success">Aprobar</button>
+                                    <button type="submit" name="accion" value="cerrar_orden_{{ orden[0] }}" class="btn btn-warning">Cerrar Orden</button>
+                                </div>
                             </div>
-                        </td>
-                        <td>
-                            <div id="lotes_{{ orden[0] }}"></div>
-                        </td>
-                        <!-- Nueva columna "Archivo" -->
-                        <td>
-                            {% if orden[6] %}
-                                <a href="{{ url_for('static', filename='uploads/' + orden[6].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
-                            {% else %}
-                                <span>No disponible</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <!-- Botones de Acción -->
-                            <button type="submit" name="accion" value="aprobar_{{ orden[0] }}" class="btn btn-success btn-sm mt-3">Aprobar Seleccionadas</button>
-                            <button type="submit" name="accion" value="cerrar_orden_{{ orden[0] }}" class="btn btn-danger btn-sm mt-3">Cerrar Orden Compra</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
         </form>
-      
-        
     </div>
-
-    <script>
-        // Función para manejar los lotes dinámicamente
-        $("input[name^='referencias_oc_']").on("change", function() {
-            var ordenId = $(this).data("orden-id"); // Obtener ID de orden desde el atributo data-orden-id
-            var numeroReferencia = $(this).data("referencia-numero"); // Obtener el número de referencia desde data-referencia-numero
-            var loteContainer = $("#lotes_" + ordenId); // Obtener contenedor de lotes para esta orden
-
-            if ($(this).is(":checked")) {
-                // Agregar un input para el lote si la referencia está seleccionada
-                loteContainer.append(
-                    '<div class="mb-2" id="lote-container-' + ordenId + '-' + numeroReferencia + '">' +
-                        '<label for="lote_' + ordenId + '_' + numeroReferencia + '">Lote de ' + numeroReferencia + ':</label>' +
-                        '<input type="text" name="lote_' + ordenId + '_' + numeroReferencia + '" class="form-control" placeholder="Ingrese lote" id="lote_' + ordenId + '_' + numeroReferencia + '">' +
-                    '</div>'
-                );
-            } else {
-                // Eliminar el input del lote si la referencia se desmarca
-                $("#lote-container-" + ordenId + "-" + numeroReferencia).remove();
-            }
-        });
-
-        // Función para validar el formulario
-                function validarFormulario() {
-            var valido = true;
-
-            // Validar si la acción es 'aprobar'
-            if ($("button[name^='aprobar_']").length) {
-                $("select[name^='factura_id']").each(function() {
-                    if (!$(this).val()) {
-                        alert("Debes seleccionar una factura para cada orden.");
-                        valido = false;
-                        return false;
-                    }
-                });
-            }
-            
-            // Para la acción de cerrar orden, solo preguntar si está seguro
-            if ($("button[name^='cerrar_orden_']").length) {
-                var confirmar = confirm("¿Estás seguro de que deseas cerrar esta orden de compra?");
-                if (!confirmar) {
-                    valido = false; // Si el usuario cancela, no se envía el formulario
-                }
-            }
-
-            return valido;
-        }
-
-
-          
-                    function mostrarLotes(orden_id) {
-                // Obtener el div de lotes correspondiente
-                let lotesDiv = document.getElementById("lotes_" + orden_id);
-                
-                // Limpiar lotes antes de agregar nuevos
-                lotesDiv.innerHTML = "";
-
-                // Recorrer todas las referencias seleccionadas
-                let referenciasSeleccionadas = document.querySelectorAll("input[name='referencias_oc_" + orden_id + "']:checked");
-                
-                // Para cada referencia seleccionada, crear un input para el lote
-                referenciasSeleccionadas.forEach(function(referenciaCheckbox) {
-                    let referencia_numero = referenciaCheckbox.value;
-
-                    // Crear un elemento de texto o un label con el número de referencia
-                    let referenciaLabel = document.createElement("label");
-                    referenciaLabel.textContent = "Referencia: " + referencia_numero;
-                    referenciaLabel.classList.add("form-label");
-                    lotesDiv.appendChild(referenciaLabel);
-
-                    // Crear un campo para ingresar el lote
-                    let inputLote = document.createElement("input");
-                    inputLote.type = "text";
-                    inputLote.name = "lotes_" + orden_id + "_" + referencia_numero;
-                    inputLote.placeholder = "Ingrese lote para referencia " + referencia_numero;
-                    inputLote.classList.add("form-control");
-                    lotesDiv.appendChild(inputLote);
-                });
-            }
-
-
-    </script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

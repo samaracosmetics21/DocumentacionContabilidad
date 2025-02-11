@@ -367,6 +367,16 @@ def gestion_bodega():
                 flash("El ID de la factura no es válido.", "error")
                 return redirect("/bodega")
 
+            # Verificar si la factura existe y está pendiente
+            cursor_pg.execute("""
+                SELECT id FROM facturas WHERE id = %s AND estado = 'Pendiente'
+            """, (factura_id,))
+            factura = cursor_pg.fetchone()
+
+            if not factura:
+                flash("El ID de la factura no es válido o no está pendiente.", "error")
+                return redirect("/bodega")
+
             # Validar si el usuario pertenece al grupo de aprobadores de bodega
             cursor_pg.execute("""
                 SELECT g.grupo 
@@ -498,7 +508,6 @@ def gestion_bodega():
             else:
                 print(f"No se encontraron facturas para NIT {nit_oc} en Postgresql.")
 
-            
             # Obtener las referencias dinámicamente para el nrodcto_oc específico
             print(f"Obteniendo las referencias para el NRODCTO {nrodcto_oc} desde PostgreSQL...")
             cursor_pg.execute("""
@@ -520,7 +529,6 @@ def gestion_bodega():
                     referencias_dict[num.strip()] = nombre.strip()
 
             print(f"Referencias para NRODCTO {nrodcto_oc} procesadas.")
-
 
     except Exception as e:
         print(f"Error en la gestión de bodega: {str(e)}")
