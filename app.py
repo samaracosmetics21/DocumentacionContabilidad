@@ -1373,13 +1373,13 @@ def gestion_final():
             print("Error: usuario no pertenece al grupo Contabilidad.")
             return redirect("/")
 
-        # Obtener las facturas aprobadas
+        # Obtener las facturas aprobadas   120225 pago_mp = 'Aprobado' 
         print("Consultando facturas aprobadas...")
         query_facturas_aprobadas = """
             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
                    pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp
             FROM facturas
-            WHERE pago_servicios = 'Aprobado' OR pago_mp = 'Aprobado' and estado_final = 'Pendiente' order by id
+            WHERE pago_servicios = 'Aprobado' OR estado_compras = 'Aprobado' and estado_final = 'Pendiente' order by id
         """
         print(f"Consulta SQL que se ejecutará: {query_facturas_aprobadas}")
         
