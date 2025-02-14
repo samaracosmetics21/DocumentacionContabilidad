@@ -1784,7 +1784,7 @@ def buscar_orden():
  
 
 
-@app.route("/gestion_inicial_mp", methods=["GET", "POST"])
+@app.route("/gestion_inicial_mp", methods=["GET", "POST"]) 
 def gestion_inicial():
     # Verificar si el usuario está logueado y pertenece al grupo "Compras"
     usuario_id = session.get("user_id")
@@ -1815,12 +1815,11 @@ def gestion_inicial():
 
     if request.method == "POST":
         # Procesar los datos del formulario y eliminar espacios de las variables
-        nrodcto_oc = request.form.get("nrodcto", "").strip() or "Valor por defecto"  # Asignar un valor por defecto si está vacío
-        nit_oc = request.form.get("nit", "").strip() or "0000000000"  # Asignar un valor por defecto si está vacío
-        nombre_cliente_oc = request.form.get("nombre_cliente", "").strip() or "Cliente Desconocido"  # Asignar un valor por defecto
-        cantidad_oc = request.form.get("cantidad", "").strip() or 0  # Asignar 0 si está vacío
+        nrodcto_oc = request.form.get("nrodcto", "").strip() or "Valor por defecto"
+        nit_oc = request.form.get("nit", "").strip() or "0000000000"
+        nombre_cliente_oc = request.form.get("nombre_cliente", "").strip() or "Cliente Desconocido"
+        cantidad_oc = request.form.get("cantidad", "").strip() or 0
         archivo = request.files.get("orden_compra")
-
         print(f"Datos recibidos: nrodcto_oc={nrodcto_oc}, nit_oc={nit_oc}, nombre_cliente_oc={nombre_cliente_oc}, "
               f"cantidad_oc={cantidad_oc}")
 
@@ -1829,10 +1828,27 @@ def gestion_inicial():
             flash("Debes subir un archivo PDF", "error")
             return redirect(request.url)
 
+        # Consultar si ya existe un nrodcto_oc duplicado
+        try:
+            cursor_pg.execute("""
+                SELECT COUNT(*) 
+                FROM ordenes_compras 
+                WHERE nrodcto_oc = %s
+            """, (nrodcto_oc,))
+            count = cursor_pg.fetchone()[0]
+
+            if count > 0:
+                flash("El número de orden de compra ya existe en el sistema.", "error")
+                return redirect(request.url)
+        
+        except Exception as e:
+            flash(f"Error al verificar el duplicado en PostgreSQL: {str(e)}", "error")
+            return redirect(request.url)
+
         # Crear la jerarquía de directorios: clasificacion/nit/fecha
         fecha_directorio = datetime.now().strftime("%Y%m%d")
         ruta_directorio = os.path.join(app.config["UPLOAD_FOLDER"], nit_oc, fecha_directorio)
-        os.makedirs(ruta_directorio, exist_ok=True)  # Crear directorios si no existen
+        os.makedirs(ruta_directorio, exist_ok=True)
         print(f"Ruta del directorio creada: {ruta_directorio}")
 
         # Guardar el archivo en la ruta definida
@@ -1870,27 +1886,25 @@ def gestion_inicial():
                     AND trade.tipodcto = 'OC' 
                     AND mvtrade.ORIGEN = 'COM' 
                     AND mvtrade.tipodcto = 'OC'
-            """, (nrodcto_oc,))  # Usar nrodcto_oc sin espacios
-            rows = cursor_sql.fetchall()  # Obtener todas las filas de resultados
+            """, (nrodcto_oc,))
+            rows = cursor_sql.fetchall()
 
             if rows:
                 # Desestructurar el primer resultado
                 nrodcto, bruto_oc, ivabruto_oc, nit_oc, nombre_cliente_oc, cantidad_oc, nombre_referencia_oc, numero_referencia_oc = rows[0]
 
                 # Unir las referencias con coma y quitar espacios
-                nombre_referencia_oc = ",".join([row[6].strip() for row in rows if row[6]])  # 'nombre_referencia' es la columna 6
-                numero_referencia_oc = ",".join([str(row[7]).strip() for row in rows if row[7]])  # 'numero_referencia' es la columna 7
+                nombre_referencia_oc = ",".join([row[6].strip() for row in rows if row[6]]) 
+                numero_referencia_oc = ",".join([str(row[7]).strip() for row in rows if row[7]])
 
                 # Mostrar las referencias concatenadas
                 print(f"Nombre referencias: {nombre_referencia_oc}")
                 print(f"Número referencias: {numero_referencia_oc}")
             else:
                 flash("No se encontró la orden de compra en SQL Server", "error")
-                print(f"No se encontró la orden de compra con nrodcto: {nrodcto_oc}")
                 return redirect(request.url)
         except Exception as e:
             flash(f"Error consultando la orden en SQL Server: {str(e)}", "error")
-            print(f"Error al consultar en SQL Server: {str(e)}")
             return redirect(request.url)
 
         # Guardar datos en PostgreSQL
@@ -1910,14 +1924,12 @@ def gestion_inicial():
 
             conn_pg.commit()
             flash("Orden de compra registrada exitosamente", "success")
-            print("Orden de compra registrada exitosamente en PostgreSQL")
-
         except Exception as e:
             flash(f"Error al guardar en PostgreSQL: {str(e)}", "error")
-            print(f"Error al guardar en PostgreSQL: {str(e)}")
             return redirect(request.url)
 
     return render_template("gestion_inicial.html")
+
 
 
 
