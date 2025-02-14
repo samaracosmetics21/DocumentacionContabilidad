@@ -566,10 +566,10 @@ def gestion_compras():
             usuario_id = request.form.get("usuario_id")
             factura_id = request.form.get("factura_id")
             remision = request.form.get("remision")
-            archivo_remision = request.files.get("archivo_remision")
+            # El archivo de remisión ya fue subido anteriormente, no se necesita en este formulario
 
             # Log de datos recibidos
-            print(f"Datos recibidos: usuario_id={usuario_id}, factura_id={factura_id}, remision={remision}, archivo_remision={archivo_remision.filename if archivo_remision else 'No file'}")
+            print(f"Datos recibidos: usuario_id={usuario_id}, factura_id={factura_id}, remision={remision}")
 
             # Validar campos
             if not usuario_id or not usuario_id.isdigit():
@@ -582,14 +582,9 @@ def gestion_compras():
                 flash("El ID de la factura no es válido.", "error")
                 return redirect("/compras")
 
-            if not remision or not remision.isalnum():
-                print("Error: La remisión debe ser un valor alfanumérico.")
-                flash("La remisión debe ser un valor alfanumérico.", "error")
-                return redirect("/compras")
-
-            if not archivo_remision or not archivo_remision.filename:
-                print("Error: No se ha subido un archivo de remisión.")
-                flash("Debes subir un archivo de remisión.", "error")
+            if not remision:  # Solo verificamos que no esté vacío
+                print("Error: La remisión no puede estar vacía.")
+                flash("La remisión no puede estar vacía.", "error")
                 return redirect("/compras")
 
             # Validar si el usuario pertenece al grupo de aprobadores de compras
@@ -629,36 +624,21 @@ def gestion_compras():
             clasificacion_texto = "Facturas" if clasificacion == "Facturas" else "Servicios"
             print(f"Datos procesados: nit={nit}, fecha={fecha_seleccionada}, clasificación={clasificacion_texto}")
 
-            # Crear directorio para guardar el archivo
-            ruta_directorio = os.path.join(
-                app.config["UPLOAD_FOLDER"], clasificacion_texto, nit, fecha_directorio
-            )
-            os.makedirs(ruta_directorio, exist_ok=True)
-            print(f"Directorio creado o existente: {ruta_directorio}")
-
-            # Guardar el archivo
-            archivo_path = os.path.join(ruta_directorio, archivo_remision.filename)
-            archivo_remision.save(archivo_path)
-            print(f"Archivo guardado en: {archivo_path}")
-
-            # Calcular ruta relativa para almacenamiento en la base de datos
-            ruta_relativa = os.path.relpath(archivo_path, app.config["UPLOAD_FOLDER"])
-            ruta_relativa = ruta_relativa.replace("static/", "")  # Eliminar prefijo 'static/'
-            print(f"Ruta relativa del archivo: {ruta_relativa}")
-
+    
             # Aprobar la factura y registrar información
             try:
                 hora_aprobacion_compras = datetime.now()
                 print("Aprobando factura en la base de datos...")
+
+                # Elimina la parte que se encargaba de guardar el archivo de remisión
                 cursor.execute("""
                     UPDATE facturas
                     SET estado_compras = 'Aprobado', 
                         hora_aprobacion_compras = %s, 
                         aprobado_compras = %s,
-                        remision = %s,
-                        archivo_remision = %s
+                        remision = %s
                     WHERE id = %s
-                """, (hora_aprobacion_compras, usuario_id, remision, ruta_relativa, factura_id))
+                """, (hora_aprobacion_compras, usuario_id, remision, factura_id))
                 conn_pg.commit()
                 print("Factura aprobada exitosamente.")
                 flash("Factura aprobada exitosamente en Compras", "success")
@@ -693,7 +673,6 @@ def gestion_compras():
 
     # Renderizar el HTML
     return render_template("compras.html", facturas=facturas)
-
 
 
 
