@@ -159,7 +159,7 @@
                     <th>Número de Factura</th>
                     <th>Fecha</th>
                     <th>Clasificación</th>
-                    <th>Archivo</th>
+                    <th>Factura</th>
                     <th>Estado Compras</th>
                     <th>Hora de Aprobación</th>
                     <th>Referencia vs Lote</th> <!-- Nueva columna -->
@@ -211,11 +211,11 @@
                             <div class="mb-2">
                                 <label for="remision_{{ factura[0] }}" class="form-label">Remisión</label>
                                 <input type="text" id="remision_{{ factura[0] }}" name="remision" class="form-control" placeholder="Ingrese la remisión" required>
-                            </div>
+                            </div><!--
                             <div class="mb-2">
                                 <label for="archivo_remision_{{ factura[0] }}" class="form-label">Subir Archivo</label>
                                 <input type="file" id="archivo_remision_{{ factura[0] }}" name="archivo_remision" class="form-control" accept=".pdf,.png,.jpg,.jpeg" required>
-                            </div>
+                            </div> -->
                             <button type="submit" class="btn btn-success btn-sm">Aprobar</button>
                         </form>
                         {% else %}
