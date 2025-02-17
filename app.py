@@ -518,17 +518,14 @@ def gestion_bodega():
             print(f"Referencias obtenidas para NRODCTO {nrodcto_oc}: {len(referencias)} registros.")
             
             # Convertir la lista de tuplas en un diccionario
-            referencias_orden = {}  # Diccionario específico para cada nrodcto_oc
+            referencias_dict = {}
             for referencia in referencias:
                 numeros_referencia = referencia[0].split(",")  # Separar las referencias por coma
                 nombres_referencia = referencia[1].split(",")  # Separar los nombres por coma
                 for num, nombre in zip(numeros_referencia, nombres_referencia):
-                    referencias_orden[num.strip()] = nombre.strip()
+                    referencias_dict[num.strip()] = nombre.strip()
 
             print(f"Referencias para NRODCTO {nrodcto_oc} procesadas.")
-
-            # Almacenar las referencias específicas de esta orden en el diccionario global
-            referencias_dict[nrodcto_oc] = referencias_orden
 
     except Exception as e:
         print(f"Error en la gestión de bodega: {str(e)}")
