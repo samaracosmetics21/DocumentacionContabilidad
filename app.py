@@ -652,10 +652,22 @@ def gestion_compras():
         # Consultar facturas pendientes en compras
         print("Consultando facturas pendientes en Compras...")
         cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_compras, hora_aprobacion_compras, lotes_oc
-            FROM facturas
-            WHERE clasificacion = 'Facturas' AND estado_compras = 'Pendiente'
-            ORDER BY fecha_seleccionada ASC
+            SELECT 
+                f.id, 
+                f.nit, 
+                f.numero_factura, 
+                f.fecha_seleccionada, 
+                f.clasificacion, 
+                f.archivo_path, 
+                f.estado_compras, 
+                f.hora_aprobacion_compras, 
+                f.lotes_oc, 
+                oc.archivo_path_oc  
+            FROM facturas f
+            JOIN ordenes_compras oc ON f.nrodcto_oc = oc.nrodcto_oc 
+            WHERE f.clasificacion = 'Facturas' 
+            AND f.estado_compras = 'Pendiente'
+            ORDER BY f.fecha_seleccionada ASC;
         """)
         facturas = cursor.fetchall()
         print(f"Facturas pendientes: {len(facturas)} facturas encontradas")
