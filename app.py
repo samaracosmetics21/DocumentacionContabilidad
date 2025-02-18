@@ -366,7 +366,19 @@ def gestion_bodega():
                 if accion.startswith("aprobar_"):
                     orden_id = accion.split("_")[1]  # Obtener el ID de la orden de compra
 
-                    # Obtener la factura_id para esta orden de compra específica
+                    # Obtener el valor de nrodcto_oc de las órdenes de compra
+                    cursor_pg.execute("""
+                        SELECT nrodcto_oc FROM ordenes_compras WHERE id = %s
+                    """, (orden_id,))
+                    orden = cursor_pg.fetchone()
+                    
+                    if orden:
+                        nrodcto_oc = orden[0]  # Asignar nrodcto_oc con el valor obtenido de la base de datos
+                    else:
+                        flash("Orden de compra no encontrada.", "error")
+                        return redirect("/bodega")
+                    
+                    # Continuar con el flujo de aprobación de la factura
                     factura_id = request.form.get(f"factura_id_{orden_id}")
                     if factura_id:
                         # Validar factura_id
@@ -424,6 +436,7 @@ def gestion_bodega():
                         flash("Factura aprobada exitosamente", "success")
                     else:
                         flash("Debe seleccionar una factura para aprobar", "error")
+
 
                 elif accion.startswith("cerrar_orden_"):
                     orden_id = accion.split("_")[2]  # Obtener el ID de la orden de compra
