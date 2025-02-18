@@ -62,7 +62,7 @@
                         </td>
                         <td>
                             <div>
-                                {% for referencia_numero, referencia_nombre in referencias.items() %}
+                                {% for referencia_numero, referencia_nombre in referencias[orden[2]].items() %}
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" name="referencias_oc_{{ orden[0] }}" value="{{ referencia_numero }}" id="referencia_{{ orden[0] }}_{{ referencia_numero }}" onclick="mostrarLotes('{{ orden[0] }}', '{{ referencia_numero }}')">
                                         <label class="form-check-label" for="referencia_{{ orden[0] }}_{{ referencia_numero }}">
@@ -75,7 +75,6 @@
                         <td>
                             <div id="lotes_{{ orden[0] }}"></div>
                         </td>
-                        <!-- Nueva columna "Archivo" -->
                         <td>
                             {% if orden[6] %}
                                 <a href="{{ url_for('static', filename='uploads/' + orden[6].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
@@ -95,7 +94,6 @@
             
         </form>
       
-        
     </div>
 
     <script>
