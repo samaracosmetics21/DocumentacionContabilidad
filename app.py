@@ -522,6 +522,8 @@ def gestion_bodega():
             for referencia in referencias:
                 numeros_referencia = referencia[0].split(",")  # Separar las referencias por coma
                 nombres_referencia = referencia[1].split(",")  # Separar los nombres por coma
+                print(f"Los números de referencia son: {', '.join(numeros_referencia)}")
+                print(f"Las descripciones de las referencias son: {', '.join(nombres_referencia)}")
                 for num, nombre in zip(numeros_referencia, nombres_referencia):
                     referencias_dict[num.strip()] = nombre.strip()
 
