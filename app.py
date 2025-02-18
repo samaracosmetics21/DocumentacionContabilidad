@@ -352,6 +352,8 @@ def gestion_bodega():
     conn_sql = sql_server_connection()  # Conexión a SQL Server
     cursor_pg = conn_pg.cursor()
     cursor_sql = conn_sql.cursor()
+    ordenes_compras = []
+    facturas_pendientes = {}
     referencias_dict = {}
 
     try:
@@ -359,8 +361,6 @@ def gestion_bodega():
             # Obtener datos del formulario
             usuario_id = request.form.get("usuario_id")
             
-            # Asegúrate de obtener la factura_id de la orden correspondiente
-            # Esto dependerá de la acción de la orden
             accion = request.form.get("accion")
             if accion:
                 if accion.startswith("aprobar_"):
@@ -398,7 +398,6 @@ def gestion_bodega():
                             flash("No tienes permisos para aprobar facturas en Bodega", "error")
                             return redirect("/bodega")
 
-                        # Procesar las acciones de los botones
                         # Recoger lotes para cada referencia seleccionada
                         lotes_oc = []
                         referencias_seleccionadas = request.form.getlist(f"referencias_oc_{orden_id}")
@@ -451,15 +450,10 @@ def gestion_bodega():
 
         print(f"Órdenes de compra aprobadas encontradas: {len(ordenes_aprobadas_sql)} registros.")
         
-        # Si no se encuentran órdenes aprobadas en SQL Server, no continuar con la validación
         if not ordenes_aprobadas_sql:
             print("No se encontraron órdenes aprobadas en SQL Server.")
-            ordenes_compras = []
-            facturas_pendientes = {}
-            referencias_dict = {}
-            return render_template("bodega.html", ordenes_compras=ordenes_compras, facturas_pendientes=facturas_pendientes, referencias=referencias_dict)
+            return render_template("bodega.html", ordenes_compras=[], facturas_pendientes={}, referencias={})
 
-        # Extraer solo los NRODCTO de las órdenes aprobadas
         nrodcto_aprobadas = [orden[0].strip() for orden in ordenes_aprobadas_sql]
 
         # Consultar las órdenes de compra en PostgreSQL que estén pendientes y coincidan con los NRODCTO aprobados en SQL Server
@@ -477,13 +471,14 @@ def gestion_bodega():
             WHERE oc.estado = 'Pendiente' 
             AND oc.nrodcto_oc IN %s
             ORDER BY oc.nrodcto_oc ASC
-        """, (tuple(nrodcto_aprobadas),))  # Usar los NRODCTO aprobados en la consulta
+        """, (tuple(nrodcto_aprobadas),))
         ordenes_compras = cursor_pg.fetchall()
 
         print(f"Órdenes de compra pendientes obtenidas: {len(ordenes_compras)} registros.")
         
-        # Obtener las facturas pendientes de las órdenes de compra
         facturas_pendientes = {}
+        referencias_dict = {}
+
         for orden in ordenes_compras:
             nit_oc = orden[1]  # Extraer el NIT de la orden de compra
             nrodcto_oc = orden[2]  # Extraer el NRODCTO de la orden de compra
@@ -512,29 +507,24 @@ def gestion_bodega():
                 FROM ordenes_compras
                 WHERE nrodcto_oc = %s
                 ORDER BY numero_referencia_oc
-            """, (nrodcto_oc,))  # Filtrar solo por el nrodcto_oc actual
+            """, (nrodcto_oc,))
             referencias = cursor_pg.fetchall()
 
             print(f"Referencias obtenidas para NRODCTO {nrodcto_oc}: {len(referencias)} registros.")
             
-            # Convertir la lista de tuplas en un diccionario
-            referencias_dict = {}
+            # Asegurarse de que las referencias se gestionen correctamente para cada orden
+            referencias_dict[nrodcto_oc] = {}
             for referencia in referencias:
                 numeros_referencia = referencia[0].split(",")  # Separar las referencias por coma
                 nombres_referencia = referencia[1].split(",")  # Separar los nombres por coma
-                print(f"Los números de referencia son: {', '.join(numeros_referencia)}")
-                print(f"Las descripciones de las referencias son: {', '.join(nombres_referencia)}")
                 for num, nombre in zip(numeros_referencia, nombres_referencia):
-                    referencias_dict[num.strip()] = nombre.strip()
+                    referencias_dict[nrodcto_oc][num.strip()] = nombre.strip()
 
             print(f"Referencias para NRODCTO {nrodcto_oc} procesadas.")
 
     except Exception as e:
         print(f"Error en la gestión de bodega: {str(e)}")
         flash(f"Error en la gestión de bodega: {str(e)}", "error")
-        ordenes_compras = []
-        facturas_pendientes = {}
-        referencias_dict = {}
 
     finally:
         if cursor_pg:
@@ -552,6 +542,7 @@ def gestion_bodega():
         facturas_pendientes=facturas_pendientes, 
         referencias=referencias_dict
     )
+
 
 
 
