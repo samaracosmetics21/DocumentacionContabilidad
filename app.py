@@ -1376,7 +1376,7 @@ def gestion_final():
         print("Consultando facturas aprobadas...")
         query_facturas_aprobadas = """
             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
-                   pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp
+                   pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp, nombre
             FROM facturas
             WHERE pago_servicios = 'Aprobado' OR estado_compras = 'Aprobado' and estado_final = 'Pendiente' order by id
         """
