@@ -62,11 +62,11 @@
                         </td>
                         <td>
                             <div>
-                                {% for referencia in referencias %}
+                                {% for referencia_numero, referencia_nombre in referencias.items() %}
                                     <div class="form-check">
-                                        <input type="checkbox" class="form-check-input" name="referencias_oc_{{ orden[0] }}" value="{{ referencia[0] }}" id="referencia_{{ orden[0] }}_{{ referencia[0] }}" onclick="mostrarLotes('{{ orden[0] }}', '{{ referencia[0] }}')">
-                                        <label class="form-check-label" for="referencia_{{ orden[0] }}_{{ referencia[0] }}">
-                                            {{ referencia[0] }} - {{ referencia[1] }}
+                                        <input type="checkbox" class="form-check-input" name="referencias_oc_{{ orden[0] }}" value="{{ referencia_numero }}" id="referencia_{{ orden[0] }}_{{ referencia_numero }}" onclick="mostrarLotes('{{ orden[0] }}', '{{ referencia_numero }}')">
+                                        <label class="form-check-label" for="referencia_{{ orden[0] }}_{{ referencia_numero }}">
+                                            {{ referencia_numero }} - {{ referencia_nombre }}
                                         </label>
                                     </div>
                                 {% endfor %}
