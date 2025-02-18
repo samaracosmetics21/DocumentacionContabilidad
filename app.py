@@ -1400,6 +1400,7 @@ def gestion_final():
                 "pago_mp": factura[7],
                 "hora_aprobacion_pago_servicio": factura[8],
                 "hora_aprobacion_pago_mp": factura[9],
+                "nombre": factura[10],
                 "ofimatica_data": ofimatica_data.get(factura[0], {})  # Asignar los datos de ofimática a cada factura
             })
 
