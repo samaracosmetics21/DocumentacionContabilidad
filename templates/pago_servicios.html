@@ -180,7 +180,7 @@
                             {% if factura[6] != 'Aprobado' %}
                             <form method="POST" action="/pago_servicios">
                                 <input type="hidden" name="factura_id" value="{{ factura[0] }}">
-                                <button type="submit" class="btn btn-success btn-sm">Aprobar</button>
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirmarAprobacion();">Aprobar</button>
                             </form>
                             {% else %}
                             <button class="btn btn-secondary btn-sm" disabled>Aprobada</button>
@@ -198,6 +198,17 @@
     </div>
 
     <!-- Scripts -->
+    <script>
+        function confirmarAprobacion() {
+            if (confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.")) {
+                
+                return true;
+            } else {
+               
+                return false;
+            }
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

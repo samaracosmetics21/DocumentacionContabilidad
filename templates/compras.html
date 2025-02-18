@@ -222,7 +222,7 @@
                                 <label for="archivo_remision_{{ factura[0] }}" class="form-label">Subir Archivo</label>
                                 <input type="file" id="archivo_remision_{{ factura[0] }}" name="archivo_remision" class="form-control" accept=".pdf,.png,.jpg,.jpeg" required>
                             </div> -->
-                            <button type="submit" class="btn btn-success btn-sm">Aprobar</button>
+                            <button type="submit" class="btn btn-success btn-sm" onclick="return confirmarAprobacion();">Aprobar</button>
                         </form>
                         {% else %}
                         <button class="btn btn-secondary btn-sm" disabled>Aprobada</button>
@@ -258,6 +258,17 @@
 
             return true;
         }
+
+        function confirmarAprobacion() {
+            if (confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.")) {
+                
+                return true;
+            } else {
+               
+                return false;
+            }
+        }
+
     </script>
 </body>
 </html>

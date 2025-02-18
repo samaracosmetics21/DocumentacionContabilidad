@@ -84,8 +84,8 @@
                         </td>
                         <td>
                             <!-- Botones de Acción -->
-                            <button type="submit" name="accion" value="aprobar_{{ orden[0] }}" class="btn btn-success btn-sm mt-3">Aprobar Seleccionadas</button>
-                            <button type="submit" name="accion" value="cerrar_orden_{{ orden[0] }}" class="btn btn-danger btn-sm mt-3">Cerrar Orden Compra</button>
+                            <button type="submit" name="accion" value="aprobar_{{ orden[0] }}" class="btn btn-success btn-sm mt-3" onclick="return confirmarAprobacion();">Aprobar Seleccionadas</button>
+                            <button type="submit" name="accion" value="cerrar_orden_{{ orden[0] }}" class="btn btn-danger btn-sm mt-3" onclick="return confirmarAprobacion();">Cerrar Orden Compra</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -172,6 +172,16 @@
                 inputLote.classList.add("form-control");
                 lotesDiv.appendChild(inputLote);
             });
+        }
+
+        function confirmarAprobacion() {
+            if (confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.")) {
+                
+                return true;
+            } else {
+               
+                return false;
+            }
         }
     </script>
 

@@ -175,7 +175,7 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <button type="submit" class="btn btn-success btn-sm">Asignar y Aprobar</button>
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirmarAprobacion();">Asignar y Aprobar</button>
                             </form>
                         </td>
                     </tr>
@@ -199,6 +199,16 @@
                 return false;
             }
             return true;
+        }
+
+        function confirmarAprobacion() {
+            if (confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.")) {
+                
+                return true;
+            } else {
+               
+                return false;
+            }
         }
     </script>
 </body>

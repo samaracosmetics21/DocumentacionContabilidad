@@ -157,7 +157,7 @@
                                 
                             </tbody>
                         </table>
-                        <button type="submit" class="btn btn-success">Vincular documentos</button>
+                        <button type="submit" class="btn btn-success" onclick="return confirmarAprobacion();">Vincular documentos</button>
                     </form>
                 </div>
 
@@ -175,6 +175,15 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <script>
+        function confirmarAprobacion() {
+            if (confirm("¿Estás seguro de Vincular estos Documentos? Esta acción no se puede deshacer.")) {
+                
+                return true;
+            } else {
+               
+                return false;
+            }
+        }
         $(document).ready(function() {
     // Detectar el evento de subida de archivo PDF
     $('#archivoForm').on('submit', function(e) {

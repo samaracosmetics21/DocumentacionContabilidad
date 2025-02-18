@@ -207,7 +207,7 @@
                         <label for="observaciones" class="form-label">Observaciones</label>
                         <textarea id="observaciones" name="observaciones" class="form-control" rows="4" placeholder="Escribe cualquier observación aquí..."></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Registrar</button>
+                    <button type="submit" class="btn btn-primary" onclick="return confirmarAprobacion();">Registrar</button>
                 </form>
             </div>
         </div>
@@ -253,6 +253,16 @@
                 });
             } else {
                 document.getElementById("sugerencias").style.display = "none";
+            }
+        }
+
+        function confirmarAprobacion() {
+            if (confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.")) {
+                
+                return true;
+            } else {
+               
+                return false;
             }
         }
     </script>

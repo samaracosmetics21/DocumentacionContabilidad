@@ -204,7 +204,7 @@
                                 <input type="number" name="valor_pagar" id="valor_pagar_{{ factura.id }}" placeholder="Valor a Pagar" class="form-control" readonly style="display:none;">
                             </div>
 
-                            <button type="submit" class="btn btn-success">Actualizar</button>
+                            <button type="submit" class="btn btn-success" onclick="return confirmarAprobacion();">Actualizar</button>
                         </form>
                     </td>
                 </tr>
@@ -263,6 +263,15 @@
                 .catch(error => {
                     console.error('Error al obtener los datos de la factura:', error);
                 });
+        }
+        function confirmarAprobacion() {
+            if (confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.")) {
+                
+                return true;
+            } else {
+               
+                return false;
+            }
         }
     </script>
 </body>
