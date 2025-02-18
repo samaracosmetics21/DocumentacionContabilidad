@@ -668,7 +668,8 @@ def gestion_compras():
                 f.estado_compras, 
                 f.hora_aprobacion_compras, 
                 f.lotes_oc, 
-                oc.archivo_path_oc  
+                oc.archivo_path_oc,
+                f.nombre  
             FROM facturas f
             JOIN ordenes_compras oc ON f.nrodcto_oc = oc.nrodcto_oc 
             WHERE f.clasificacion = 'Facturas' 
