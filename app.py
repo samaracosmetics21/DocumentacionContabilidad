@@ -364,44 +364,36 @@ def gestion_bodega():
             accion = request.form.get("accion")
             if accion:
                 if accion.startswith("aprobar_"):
-                    orden_id = accion.split("_")[1]  # Obtener el ID de la orden de compra
+                    orden_id = accion.split("_")[1]
 
-                    # Obtener el valor de nrodcto_oc de las órdenes de compra
-                    cursor_pg.execute("""
-                        SELECT nrodcto_oc FROM ordenes_compras WHERE id = %s
-                    """, (orden_id,))
+                    # Obtener el nrodcto_oc
+                    cursor_pg.execute("SELECT nrodcto_oc FROM ordenes_compras WHERE id = %s", (orden_id,))
                     orden = cursor_pg.fetchone()
-                    
                     if orden:
                         nrodcto_oc = orden[0]  # Asignar nrodcto_oc con el valor obtenido de la base de datos
                     else:
                         flash("Orden de compra no encontrada.", "error")
                         return redirect("/bodega")
-                    
-                    # Continuar con el flujo de aprobación de la factura
+
                     factura_id = request.form.get(f"factura_id_{orden_id}")
                     if factura_id:
+                        if factura_id:
                         # Validar factura_id
-                        if not factura_id.isdigit():
-                            print(f"ID de factura inválido: {factura_id}") 
-                            flash("El ID de la factura no es válido.", "error")
-                            return redirect("/bodega")
-
-                        # Verificar si la factura existe y está pendiente
-                        cursor_pg.execute("""
-                            SELECT id FROM facturas WHERE id = %s AND estado = 'Pendiente'
-                        """, (factura_id,))
+                            if not factura_id.isdigit():
+                                print(f"ID de factura inválido: {factura_id}") 
+                                flash("El ID de la factura no es válido.", "error")
+                                return redirect("/bodega")
+                        # Validar factura y usuario aprobador
+                        cursor_pg.execute("SELECT id FROM facturas WHERE id = %s AND estado = 'Pendiente'", (factura_id,))
                         factura = cursor_pg.fetchone()
 
                         if not factura:
-                            flash("El ID de la factura no es válido o no está pendiente.", "error")
+                            flash("La factura no es válida o ya fue aprobada.", "error")
                             return redirect("/bodega")
 
-                        # Validar si el usuario pertenece al grupo de aprobadores de bodega
                         cursor_pg.execute("""
-                            SELECT g.grupo 
-                            FROM usuarios u 
-                            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+                            SELECT g.grupo FROM usuarios u
+                            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id
                             WHERE u.id = %s AND g.grupo = 'Bodega'
                         """, (usuario_id,))
                         grupo = cursor_pg.fetchone()
@@ -409,8 +401,9 @@ def gestion_bodega():
                         if not grupo:
                             flash("No tienes permisos para aprobar facturas en Bodega", "error")
                             return redirect("/bodega")
+                            # return redirect("/bodega")
 
-                        # Recoger lotes para cada referencia seleccionada
+                        # Recoger lotes seleccionados
                         lotes_oc = []
                         referencias_seleccionadas = request.form.getlist(f"referencias_oc_{orden_id}")
                         for referencia_numero in referencias_seleccionadas:
@@ -418,48 +411,48 @@ def gestion_bodega():
                             if lote:
                                 lotes_oc.append(f"{referencia_numero}:{lote}")
 
-                        # Unir los lotes seleccionados con comas
                         lotes_oc_str = ",".join(lotes_oc) if lotes_oc else None
-
-                        # Actualizar el estado de la factura a 'Aprobado' y registrar los lotes
                         hora_aprobacion = datetime.now()
+
+                        # Solo actualizar los lotes y demás campos sin cambiar el estado
                         cursor_pg.execute("""
                             UPDATE facturas
-                            SET estado = 'Aprobado', 
-                                hora_aprobacion = %s, 
+                            SET hora_aprobacion = %s, 
                                 aprobado_bodega = %s,
                                 lotes_oc = %s, 
                                 nrodcto_oc = %s
                             WHERE id = %s
                         """, (hora_aprobacion, usuario_id, lotes_oc_str, nrodcto_oc, factura_id))
-                        conn_pg.commit()
-                        flash("Factura aprobada exitosamente", "success")
-                    else:
-                        flash("Debe seleccionar una factura para aprobar", "error")
 
+                        conn_pg.commit()
+                        flash("Lotes aprobados exitosamente. La factura no ha sido cerrada aún.", "success")
+
+                elif accion.startswith("cerrar_factura_"):
+                    factura_id = request.form.get(f"factura_id_{orden_id}")
+
+                    if factura_id:
+                        cursor_pg.execute("UPDATE facturas SET estado = 'Aprobado' WHERE id = %s", (factura_id,))
+                        conn_pg.commit()
+                        flash("Factura cerrada exitosamente.", "success")
 
                 elif accion.startswith("cerrar_orden_"):
-                    orden_id = accion.split("_")[2]  # Obtener el ID de la orden de compra
+                    orden_id = accion.split("_")[2]
 
-                    # Cerrar la orden de compra (actualizar estado a 'Aprobado')
-                    cursor_pg.execute("""
-                        UPDATE ordenes_compras
-                        SET estado = 'Aprobado'
-                        WHERE id = %s
-                    """, (orden_id,))
+                    cursor_pg.execute("UPDATE ordenes_compras SET estado = 'Aprobado' WHERE id = %s", (orden_id,))
                     conn_pg.commit()
-                    flash("Orden de compra cerrada exitosamente", "success")
+                    flash("Orden de compra cerrada exitosamente.", "success")
 
-        # Consultar órdenes de compra aprobadas desde SQL Server (trade)
-        print("Consultando órdenes de compra aprobadas desde SQL Server...")
-        cursor_sql.execute("""
-            SELECT NRODCTO 
-            FROM trade
-            WHERE origen = 'COM' 
-            AND TIPODCTO = 'OC' 
-            AND TRIM(autorizpor) = 'RRQ07'
-        """)
-        ordenes_aprobadas_sql = cursor_sql.fetchall()
+
+                    # Consultar órdenes de compra aprobadas desde SQL Server (trade)
+                    print("Consultando órdenes de compra aprobadas desde SQL Server...")
+                    cursor_sql.execute("""
+                        SELECT NRODCTO 
+                        FROM trade
+                        WHERE origen = 'COM' 
+                        AND TIPODCTO = 'OC' 
+                        AND TRIM(autorizpor) = 'RRQ07'
+                    """)
+                    ordenes_aprobadas_sql = cursor_sql.fetchall()
 
         print(f"Órdenes de compra aprobadas encontradas: {len(ordenes_aprobadas_sql)} registros.")
         
