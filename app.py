@@ -421,11 +421,11 @@ def gestion_bodega():
                         # Unir los lotes seleccionados con comas
                         lotes_oc_str = ",".join(lotes_oc) if lotes_oc else None
 
-                        # Actualizar el estado de la factura a 'Aprobado' y registrar los lotes
+                        # Actualizar el estado de la factura a 'Aprobado' y registrar los lotes  estado = 'Aprobado',
                         hora_aprobacion = datetime.now()
                         cursor_pg.execute("""
                             UPDATE facturas
-                            SET estado = 'Aprobado', 
+                            SET 
                                 hora_aprobacion = %s, 
                                 aprobado_bodega = %s,
                                 lotes_oc = %s, 
@@ -449,6 +449,35 @@ def gestion_bodega():
                     """, (orden_id,))
                     conn_pg.commit()
                     flash("Orden de compra cerrada exitosamente", "success")
+
+                elif accion.startswith("c"):
+                    factura_id = accion.split("_")[2]  # Obtener el ID de la factura
+
+                    # Validar que el ID de la factura sea numérico
+                    if not factura_id.isdigit():
+                        print(f"ID de factura inválido: {factura_id}") 
+                        flash("El ID de la factura no es válido.", "error")
+                        return redirect("/bodega")
+
+                    # Verificar si la factura existe y está en estado 'Pendiente'
+                    cursor_pg.execute("""
+                        SELECT id FROM facturas WHERE id = %s AND estado = 'Pendiente'
+                    """, (factura_id,))
+                    factura = cursor_pg.fetchone()
+
+                    if not factura:
+                        flash("La factura no es válida o ya fue aprobada.", "error")
+                        return redirect("/bodega")
+
+                    # Cerrar la factura cambiando su estado a 'Aprobado'
+                    cursor_pg.execute("""
+                        UPDATE facturas
+                        SET estado = 'Aprobado'
+                        WHERE id = %s
+                    """, (factura_id,))
+                    conn_pg.commit()
+
+                    flash("Factura cerrada exitosamente.", "success")
 
         # Consultar órdenes de compra aprobadas desde SQL Server (trade)
         print("Consultando órdenes de compra aprobadas desde SQL Server...")
