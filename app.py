@@ -355,7 +355,7 @@ def gestion_bodega():
     ordenes_compras = []
     facturas_pendientes = {}
     referencias_dict = {}
-
+    ordenes_aprobadas_sql = []
     try:
         if request.method == "POST":
             # Obtener datos del formulario
@@ -444,22 +444,15 @@ def gestion_bodega():
 
 
                     # Consultar órdenes de compra aprobadas desde SQL Server (trade)
-                    ordenes_aprobadas_sql = []  # Inicialización antes del try
-
-                    try:
-                        # Consultar órdenes de compra aprobadas desde SQL Server (trade)
-                        print("Consultando órdenes de compra aprobadas desde SQL Server...")
-                        cursor_sql.execute("""
-                            SELECT NRODCTO 
-                            FROM trade
-                            WHERE origen = 'COM' 
-                            AND TIPODCTO = 'OC' 
-                            AND TRIM(autorizpor) = 'RRQ07'
-                        """)
-                        ordenes_aprobadas_sql = cursor_sql.fetchall()  # Se asigna el resultado de la consulta
-                    except Exception as e:
-                        print(f"Error al consultar SQL Server: {e}")  # Se captura el error sin afectar el código
-
+                    print("Consultando órdenes de compra aprobadas desde SQL Server...")
+                    cursor_sql.execute("""
+                        SELECT NRODCTO 
+                        FROM trade
+                        WHERE origen = 'COM' 
+                        AND TIPODCTO = 'OC' 
+                        AND TRIM(autorizpor) = 'RRQ07'
+                    """)
+                    ordenes_aprobadas_sql = cursor_sql.fetchall()
 
         print(f"Órdenes de compra aprobadas encontradas: {len(ordenes_aprobadas_sql)} registros.")
         
