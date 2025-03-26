@@ -937,7 +937,7 @@ def gestion_asignaciones():
         # Consultar facturas asignadas al usuario actual
         print("Consultando facturas asignadas al usuario actual...")
         cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_usuario_asignado, estado_usuario_asignado, hora_aprobacion_asignado
+            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_usuario_asignado, estado_usuario_asignado, hora_aprobacion_asignado, nombre
             FROM facturas
             WHERE usuario_asignado_servicios = %s
             ORDER BY fecha_seleccionada ASC
