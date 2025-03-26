@@ -1055,10 +1055,12 @@ def pago_servicios():
         # Consultar facturas aprobadas y pendientes de pago de servicios
         print("Consultando facturas aprobadas para pago de servicios...")
         cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, pago_servicios, hora_aprobacion_pago_servicio
-            FROM facturas
-            WHERE estado_usuario_asignado = 'Aprobado' and pago_servicios = 'Pendiente'
-            ORDER BY fecha_seleccionada ASC
+            SELECT fac.id, fac.nit, fac.numero_factura, fac.fecha_seleccionada, fac.clasificacion, fac.archivo_path, fac.pago_servicios, 
+            fac.hora_aprobacion_pago_servicio, fac.nombre, us.correo
+            FROM facturas fac
+			inner join usuarios us on fac.usuario_asignado_servicios=us.id
+            WHERE fac.estado_usuario_asignado = 'Aprobado' and fac.pago_servicios = 'Pendiente'
+            ORDER BY fac.fecha_seleccionada ASC
         """)
         facturas_aprobadas = cursor.fetchall()
         print(f"Facturas aprobadas para pago de servicios obtenidas: {facturas_aprobadas}")
