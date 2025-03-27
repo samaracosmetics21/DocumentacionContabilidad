@@ -35,9 +35,9 @@ def login_required(f):
 
 @app.route("/buscar_cliente", methods=["GET"])
 def buscar_cliente():
-    nombre = request.args.get("q", "").upper()  # Convertir el nombre ingresado a mayúsculas
+    query_param = request.args.get("q", "").upper()  # Convertir el término de búsqueda a mayúsculas
     
-    if nombre:
+    if query_param:
         try:
             conn = sql_server_connection()  # Asegúrate de que la conexión a SQL Server esté funcionando
             if not conn:
@@ -45,14 +45,26 @@ def buscar_cliente():
             
             cursor = conn.cursor()
 
-            # Realizar la consulta, comparando en mayúsculas
-            query = """
-                SELECT TOP 10 nit, nombre 
-                FROM MTPROCLI 
-                WHERE UPPER(nombre) LIKE ?  -- Convertir el campo 'nombre' a mayúsculas
-                ORDER BY nombre
-            """
-            cursor.execute(query, ('%' + nombre + '%',))  # Agregar '%' para realizar la búsqueda de substring
+            # Verificar si es un NIT (comprobando si contiene solo números)
+            if query_param.isdigit():
+                # Buscar por NIT
+                query = """
+                    SELECT TOP 10 nit, nombre 
+                    FROM MTPROCLI 
+                    WHERE nit LIKE ?  -- Buscar por NIT
+                    ORDER BY nombre
+                """
+                cursor.execute(query, ('%' + query_param + '%',))
+            else:
+                # Buscar por nombre
+                query = """
+                    SELECT TOP 10 nit, nombre 
+                    FROM MTPROCLI 
+                    WHERE UPPER(nombre) LIKE ?  -- Buscar por nombre
+                    ORDER BY nombre
+                """
+                cursor.execute(query, ('%' + query_param + '%',))
+            
             resultados = cursor.fetchall()
 
             # Formatear los resultados como una lista de diccionarios
@@ -65,6 +77,7 @@ def buscar_cliente():
             return jsonify({"error": str(e)}), 500
     else:
         return jsonify([])  # Si no se proporciona un término de búsqueda, devolver lista vacía
+
 
 
 @app.route("/", methods=["GET", "POST"])

@@ -220,13 +220,14 @@
     <script>
         function buscarClientes() {
             let nombre = document.getElementById("nombre").value.trim();
-            nombre = nombre.toUpperCase();
+            let nit = document.getElementById("nit").value.trim();
+            let query = nombre.length >= 3 ? nombre : nit; // Usar nombre si tiene 3 o más caracteres, de lo contrario usar NIT
 
-            if (nombre.length >= 3) {
+            if (query.length >= 3) {
                 $.ajax({
                     url: '/buscar_cliente',
                     type: 'GET',
-                    data: { q: nombre },
+                    data: { q: query },
                     success: function(response) {
                         const sugerencias = document.getElementById("sugerencias");
                         sugerencias.innerHTML = "";
