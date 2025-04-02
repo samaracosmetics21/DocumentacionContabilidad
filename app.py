@@ -1976,8 +1976,80 @@ def gestion_inicial():
 
     return render_template("gestion_inicial.html")
 
+@app.route("/aprobar_factura/<int:id_factura>", methods=["POST"])
+@login_required
+def aprobar_factura(id_factura):
+    conn_pg = None
+    cursor = None
+    usuario = session.get("user_id")  
+
+    # Verificar si el usuario pertenece al grupo "Auditores"
+    try:
+        conn_pg = postgres_connection()
+        cursor = conn_pg.cursor()
+
+        cursor.execute("""
+            SELECT g.grupo
+            FROM usuarios u
+            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id
+            WHERE u.id = %s AND g.grupo = 'Auditores'
+        """, (usuario,))
+        grupo_usuario = cursor.fetchone()
+
+        if not grupo_usuario:
+            flash("No tienes permisos para aprobar facturas.", "error")
+            return redirect("/auditor")
+
+        # Si el usuario es auditor, proceder 
+        cursor.execute("""
+            UPDATE facturas
+            SET
+                aproba_auditor = 'Aprobado', 
+                hora_aproba_auditor = CURRENT_TIMESTAMP, 
+                usuario_auditor = %s
+            WHERE id = %s AND aproba_auditor = 'Pendiente'
+        """, (usuario, id_factura))
+
+        conn_pg.commit()
+        flash("Factura aprobada exitosamente", "success")
+        return redirect("/auditor")
+
+    except Exception as e:
+        conn_pg.rollback()  
+        flash(f"Error al aprobar la factura: {str(e)}", "error")
+        return redirect("/auditor")
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn_pg:
+            conn_pg.close()
 
 
+@app.route("/auditor", methods=["GET"])
+@login_required
+def auditor():
+    conn_pg = postgres_connection()
+    cursor = conn_pg.cursor()
+
+    try:
+        cursor.execute("""
+            select id, numero_ofimatica, nit, nombre, numero_factura, fecha_seleccionada, nrodcto_oc, archivo_path
+	        from facturas where aproba_auditor='Pendiente' 
+        """)
+        facturas = cursor.fetchall()
+
+    except Exception as e:
+        flash(f"Error al consultar las facturas: {str(e)}", "error")
+        facturas = []
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn_pg:
+            conn_pg.close()
+
+    return render_template("auditor.html", facturas=facturas)
 
 
 
