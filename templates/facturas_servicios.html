@@ -146,6 +146,7 @@
                                     <th>Fecha Registro</th>
                                     <th>Clasificación</th>
                                     <th>Archivo</th>
+                                    <th>Observaciones</th>
                                     <th>Hora Aprobación Bodega</th>
                                     <th>Estado Aprobación Bodega</th>
                                     <th>Usuario Aprueba Bodega</th>
@@ -163,6 +164,7 @@
                                     <th>Estado Aprobación Usuario Asignado</th>
                                     <th>Hora Aprobación Usuario Servicio</th>
                                     <th>Aprobación Jefe Servicios</th>
+                                    <th>Aprobación Auditor</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -179,6 +181,7 @@
                                         <a href="{{ url_for('static', filename= 'uploads/' + factura[6].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Archivo</a>
                                         {% else %} No disponible {% endif %}
                                     </td>
+                                    <td>{{ factura[26] }}</td>
                                     <td>{{ factura[7] }}</td>
                                     <td>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[8] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
@@ -222,6 +225,10 @@
                                     <td>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[23] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[23] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-check status-icon status-approved" style="display: {% if factura[27] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
+                                        <i class="fas fa-times status-icon status-denied" style="display: {% if factura[27] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                 </tr>
                                 {% endfor %}

@@ -1769,7 +1769,9 @@ def facturas_servicios():
                 f.hora_aprobacion_asignado as hora_aprobacion_user_servicio, 
                 f.pago_servicios as aprobacion_jefe_servicios,
                 f.hora_aprobacion_pago_servicio as hora_aprobacion_jefe_servicio,
-                f.valor_pagar
+                f.valor_pagar,
+                f.observaciones_regis, 
+                f.aproba_auditor       
             FROM facturas f
             LEFT JOIN usuarios u ON f.aprobado_bodega = u.id  
             LEFT JOIN usuarios u1 ON f.aprobado_compras = u1.id  
