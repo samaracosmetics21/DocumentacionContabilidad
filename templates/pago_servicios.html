@@ -154,7 +154,8 @@
                     <input type="text" id="search" class="form-control" placeholder="Filtro de busqueda...">
                 </div>
                 <!-- Si existen facturas -->
-        {% if facturas %}
+                <div class="table-responsive">
+                    {% if facturas %}
                     <table class="table table-striped table-bordered" id="facturasTable">
                         <thead>
                             <tr>
@@ -217,6 +218,9 @@
                     <strong>No hay facturas aprobadas pendientes de pago.</strong>
                 </div>
                 {% endif %}
+
+                </div>
+        
 
             </div>
 
