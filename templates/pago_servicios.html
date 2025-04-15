@@ -4,7 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Pago de Servicios</title>
+   
+    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
+
+    <!-- FontAwesome para íconos -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
     <style>
         body {
             background-color: #f8f9fa;
@@ -108,6 +117,9 @@
             color: green; 
             font-weight: bold; 
         }
+        .card {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -134,75 +146,106 @@
     <!-- Contenido Principal -->
     <div class="container">
         <h1>Gestión de Pago de Servicios</h1>
+        <div class="card">
+            <div class="card-body">
 
-        <!-- Si existen facturas -->
+                <div class="mb-4">
+                    <label for="search" class="form-label">Buscar Factura:</label>
+                    <input type="text" id="search" class="form-control" placeholder="Filtro de busqueda...">
+                </div>
+                <!-- Si existen facturas -->
         {% if facturas %}
-            <table class="table table-striped table-bordered">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>NIT</th>
-                        <th>Nombre</th>
-                        <th>Aprobado por</th>
-                        <th>Número de Factura</th>
-                        <th>Fecha</th>
-                        <th>Clasificación</th>
-                        <th>Archivo</th>
-                        <th>Estado Pago</th>
-                        <th>Hora de Aprobación</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for factura in facturas %}
-                    <tr>
-                        <td>{{ factura[0] }}</td>
-                        <td>{{ factura[1] }}</td>
-                        <td>{{ factura[8] }}</td>
-                        <td>{{ factura[9] }}</td>
-                        <td>{{ factura[2] }}</td>
-                        <td>{{ factura[3] }}</td>
-                        <td>{{ factura[4] }}</td>
-                        <td>
-                            <a href="{{ url_for('static', filename='uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
-                        </td>
-                        <td>
-                            {% if factura[6] == 'Aprobado' %}
-                                <span class="badge bg-success">Aprobado</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Pendiente</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if factura[7] %}
-                                {{ factura[7] }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if factura[6] != 'Aprobado' %}
-                            <form method="POST" action="/pago_servicios">
-                                <input type="hidden" name="factura_id" value="{{ factura[0] }}">
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirmarAprobacion();">Aprobar</button>
-                            </form>
-                            {% else %}
-                            <button class="btn btn-secondary btn-sm" disabled>Aprobada</button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-        <div class="alert alert-info">
-            <strong>No hay facturas aprobadas pendientes de pago.</strong>
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>NIT</th>
+                                <th>Nombre</th>
+                                <th>Aprobado por</th>
+                                <th>Número de Factura</th>
+                                <th>Fecha</th>
+                                <th>Clasificación</th>
+                                <th>Archivo</th>
+                                <th>Estado Pago</th>
+                                <th>Hora de Aprobación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for factura in facturas %}
+                            <tr>
+                                <td>{{ factura[0] }}</td>
+                                <td>{{ factura[1] }}</td>
+                                <td>{{ factura[8] }}</td>
+                                <td>{{ factura[9] }}</td>
+                                <td>{{ factura[2] }}</td>
+                                <td>{{ factura[3] }}</td>
+                                <td>{{ factura[4] }}</td>
+                                <td>
+                                    <a href="{{ url_for('static', filename='uploads/' + factura[5].replace('\\', '/')) }}" target="_blank" class="btn btn-link">Ver Archivo</a>
+                                </td>
+                                <td>
+                                    {% if factura[6] == 'Aprobado' %}
+                                        <span class="badge bg-success">Aprobado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Pendiente</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if factura[7] %}
+                                        {{ factura[7] }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if factura[6] != 'Aprobado' %}
+                                    <form method="POST" action="/pago_servicios">
+                                        <input type="hidden" name="factura_id" value="{{ factura[0] }}">
+                                        <button type="submit" class="btn btn-success btn-sm" onclick="return confirmarAprobacion();">Aprobar</button>
+                                    </form>
+                                    {% else %}
+                                    <button class="btn btn-secondary btn-sm" disabled>Aprobada</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                <div class="alert alert-info">
+                    <strong>No hay facturas aprobadas pendientes de pago.</strong>
+                </div>
+                {% endif %}
+
+            </div>
+
         </div>
-        {% endif %}
+        
     </div>
 
     <!-- Scripts -->
+    <!-- Bootstrap JS y DataTables JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+
     <script>
+         $(document).ready(function() {
+            var table = $('#facturasTable').DataTable({
+                paging: true,
+                searching: true,
+                lengthChange: false,
+                pageLength: 10,
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.1/i18n/Spanish.json'
+                }
+            });
+
+            $('#search').on('keyup', function() {
+                table.search(this.value).draw();
+            });
+        });
         function confirmarAprobacion() {
             if (confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.")) {
                 
