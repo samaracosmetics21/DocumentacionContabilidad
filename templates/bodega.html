@@ -83,11 +83,25 @@
                             {% endif %}
                         </td>
                         <td>
-                            <!-- Botones de Acción -->
-                            <button type="submit" name="accion" value="aprobar_{{ orden[0] }}" class="btn btn-success btn-sm mt-3" onclick="return confirmarAprobacion();">Aprobar Seleccionadas</button>
-                            <button type="submit" name="accion" value="cerrar_orden_{{ orden[0] }}" class="btn btn-danger btn-sm mt-3" onclick="return confirmarAprobacion();">Cerrar Orden Compra</button>
-                            <button type="submit" name="accion" value="cerrar_factura_{{ orden[0] }}" class="btn btn-warning btn-sm mt-3" onclick="return confirmarCierreFactura();">
-                                Cerrar Factura
+                            <!-- ① Aprobar Seleccionadas -->
+                            <button type="submit" name="accion" value="aprobar_{{ orden[0] }}" 
+                            class="btn btn-success btn-sm mt-3" 
+                            onclick="return confirmarAprobacion();">
+                            ① Aprobar Seleccionadas
+                            </button>
+
+                            <!-- ② Cerrar Factura -->
+                            <button type="submit" name="accion" value="cerrar_factura_{{ orden[0] }}" 
+                            class="btn btn-warning btn-sm mt-3" 
+                            onclick="return confirmarCierreFactura();">
+                            ② Cerrar Factura
+                            </button>
+
+                            <!-- ③ Cerrar Orden Compra -->
+                            <button type="submit" name="accion" value="cerrar_orden_{{ orden[0] }}" 
+                            class="btn btn-danger btn-sm mt-3" 
+                            onclick="return confirmarAprobacion();">
+                            ③ Cerrar Orden Compra
                             </button>
                         </td>
                     </tr>
