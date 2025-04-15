@@ -171,21 +171,7 @@
     <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 
     <script>
-        $(document).ready(function() {
-            var table = $('#facturasTable').DataTable({
-                paging: true,
-                searching: true,
-                lengthChange: false,
-                pageLength: 10,
-                language: {
-                    url: 'https://cdn.datatables.net/plug-ins/1.13.1/i18n/Spanish.json'
-                }
-            });
 
-            $('#search').on('keyup', function() {
-                table.search(this.value).draw();
-            });
-        });
         // Función para manejar los lotes dinámicamente
         $("input[name^='referencias_oc_']").on("change", function() {
             var ordenId = $(this).data("orden-id"); // Obtener ID de orden desde el atributo data-orden-id
@@ -275,6 +261,21 @@
         function confirmarCierreFactura() {
         return confirm("¿Estás seguro de cerrar la factura? Esta acción es irreversible.");
     }
+    $(document).ready(function() {
+            var table = $('#facturasTable').DataTable({
+                paging: true,
+                searching: true,
+                lengthChange: false,
+                pageLength: 10,
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.1/i18n/Spanish.json'
+                }
+            });
+
+            $('#search').on('keyup', function() {
+                table.search(this.value).draw();
+            });
+        });
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
