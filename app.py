@@ -541,19 +541,25 @@ def gestion_bodega():
 
             cursor_pg.execute("""
                 SELECT fac.id, fac.numero_factura, fac.fecha_seleccionada
-                FROM facturas fac
-                INNER JOIN ordenes_compras oc ON TRIM(oc.nit_oc) = TRIM(fac.nit)
-                WHERE fac.estado = 'Pendiente' AND oc.estado = 'Pendiente' AND oc.nit_oc = %s
-                ORDER BY fac.fecha_seleccionada ASC
-            """, (nit_oc,))
+                    FROM facturas fac
+                    INNER JOIN ordenes_compras oc ON TRIM(oc.nit_oc) = TRIM(fac.nit)
+                    WHERE fac.estado = 'Pendiente' 
+                        AND oc.estado = 'Pendiente' 
+                        AND oc.nit_oc = %s
+                        AND oc.nrodcto_oc = %s
+                    ORDER BY fac.fecha_seleccionada ASC
+            """, (nit_oc, nrodcto_oc))
             facturas_pg = cursor_pg.fetchall()
 
             print(f"Facturas encontradas para NIT {nit_oc} en Postgresql: {len(facturas_pg)} registros.")
 
-            if facturas_pg:
-                facturas_pendientes[orden[0]] = facturas_pg
-            else:
-                print(f"No se encontraron facturas para NIT {nit_oc} en PostgreSQL.")
+            facturas_dict = {}
+            for fac in facturas_pg:
+                facturas_dict[fac[0]] = fac
+                #facturas_pendientes[orden[0]] = facturas_pg
+            facturas_pendientes[orden[0]] = list(facturas_dict.values())
+            #else:
+                #print(f"No se encontraron facturas para NIT {nit_oc} en PostgreSQL.")
 
             # Obtener las referencias dinámicamente para el nrodcto_oc específico
             print(f"Obteniendo las referencias para el NRODCTO {nrodcto_oc} desde PostgreSQL...")
