@@ -165,7 +165,7 @@
                                         {% else %} No disponible {% endif %}
                                     </td>
                                     <td>
-                                        <form action="{{ url_for('aprobar_factura', id_factura=factura[0]) }}" method="POST">
+                                        <form class="form-aprobar-factura" data-id="{{ factura[0] }}">
                                             <button type="submit" class="btn btn-success">Aprobar</button>
                                         </form>
                                     </td>
@@ -186,7 +186,8 @@
     <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
+            // Inicializar DataTable
             var table = $('#facturasTable').DataTable({
                 paging: true,
                 searching: true,
@@ -196,11 +197,37 @@
                     url: 'https://cdn.datatables.net/plug-ins/1.13.1/i18n/Spanish.json'
                 }
             });
-
-            $('#search').on('keyup', function() {
+        
+            // Buscar por texto
+            $('#search').on('keyup', function () {
                 table.search(this.value).draw();
             });
+        
+            // Manejar el formulario de aprobación con AJAX
+            $('#facturasTable').on('submit', '.form-aprobar-factura', function (e) {
+                e.preventDefault(); // evitar envío tradicional del formulario
+        
+                var form = $(this);
+                var idFactura = form.data('id');
+                var row = form.closest('tr');
+        
+                $.ajax({
+                    url: "/aprobar_factura/" + idFactura,
+                    method: "POST",
+                    success: function (response) {
+                        // Mostrar mensaje
+                        alert("Factura aprobada exitosamente");
+        
+                        // Eliminar fila de la tabla (visual)
+                        table.row(row).remove().draw();
+                    },
+                    error: function (xhr) {
+                        alert("Error al aprobar la factura");
+                    }
+                });
+            });
         });
-    </script>
+        </script>
+        
 </body>
 </html>

@@ -1984,6 +1984,8 @@ def gestion_inicial():
 
     return render_template("gestion_inicial.html")
 
+
+
 @app.route("/aprobar_factura/<int:id_factura>", methods=["POST"])
 @login_required
 def aprobar_factura(id_factura):
@@ -1991,7 +1993,6 @@ def aprobar_factura(id_factura):
     cursor = None
     usuario = session.get("user_id")  
 
-    # Verificar si el usuario pertenece al grupo "Auditores"
     try:
         conn_pg = postgres_connection()
         cursor = conn_pg.cursor()
@@ -2005,10 +2006,8 @@ def aprobar_factura(id_factura):
         grupo_usuario = cursor.fetchone()
 
         if not grupo_usuario:
-            flash("No tienes permisos para aprobar facturas.", "error")
-            return redirect("/auditor")
+            return jsonify({"success": False, "message": "No tienes permisos para aprobar facturas."}), 403
 
-        # Si el usuario es auditor, proceder 
         cursor.execute("""
             UPDATE facturas
             SET
@@ -2019,19 +2018,18 @@ def aprobar_factura(id_factura):
         """, (usuario, id_factura))
 
         conn_pg.commit()
-        flash("Factura aprobada exitosamente", "success")
-        return redirect("/auditor")
+        return jsonify({"success": True, "message": "Factura aprobada exitosamente"}), 200
 
     except Exception as e:
-        conn_pg.rollback()  
-        flash(f"Error al aprobar la factura: {str(e)}", "error")
-        return redirect("/auditor")
+        conn_pg.rollback()
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
     finally:
         if cursor:
             cursor.close()
         if conn_pg:
             conn_pg.close()
+
 
 
 @app.route("/auditor", methods=["GET"])
