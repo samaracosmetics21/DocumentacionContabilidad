@@ -1351,7 +1351,7 @@ def gestion_final():
                                 WHERE NRODCTO = ? AND ORIGEN='COM' AND TIPODCTO='FR'
                             """
                             print(f"Consulta SQL que se ejecutará para Factura MP: {sql_server_query}")
-                            cursor_sql.execute(sql_server_query, (f"%{numero_ofimatica}%",))
+                            cursor_sql.execute(sql_server_query, (numero_ofimatica,))
                         elif clasificacion == 'Servicios':
                             # Es una factura de Servicios (FS) AND TIPODCTO='FS'
                             sql_server_query = """
@@ -1366,10 +1366,10 @@ def gestion_final():
                                     (bruto + IVABRUTO) AS SUBTOTAL, 
                                     ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
                                 FROM TRADE
-                                WHERE NRODCTO = ? AND ORIGEN='COM' AND TIPODCTO='FS'
+                                WHERE NRODCTO = ? AND ORIGEN='COM' -- AND TIPODCTO='FS'
                             """
                             print(f"Consulta SQL que se ejecutará para Factura de Servicios: {sql_server_query}")
-                            cursor_sql.execute(sql_server_query, (f"%{numero_ofimatica}%",))
+                            cursor_sql.execute(sql_server_query, (numero_ofimatica,))
                         else:
                             print(f"Clasificación no válida para la factura {factura}: {clasificacion}")
                             continue  # Si la clasificación no es válida, continuar con la siguiente factura
@@ -1490,7 +1490,7 @@ def obtener_factura(numero_ofimatica):
     """
     print(f"Consulta SQL que se ejecutará: {query}")
     
-    cursor.execute(query, ('%' + numero_ofimatica + '%',))  # Añadimos el '%' para el LIKE
+    cursor.execute(query, (numero_ofimatica,))  # Añadimos el '%' para el LIKE
     #cursor.execute(query, (numero_ofimatica,))
     result = cursor.fetchone()
 
@@ -1558,6 +1558,30 @@ def buscar_ofimatica(numero_ofimatica):
         # Manejo de excepciones en caso de error en la consulta o en el proceso
         print(f"Error al procesar la factura: {e}")
         return jsonify({"error": "Error interno al procesar la solicitud."}), 500
+    
+@app.route('/autocomplete_ofimatica')
+def autocomplete_ofimatica():
+    term = request.args.get('term', '').strip()
+
+    if not term:
+        return jsonify([])
+
+    conn = sql_server_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT DISTINCT NRODCTO
+        FROM TRADE
+        WHERE NRODCTO LIKE ? AND ORIGEN='COM'
+        LIMIT 30
+    """
+    cursor.execute(query, (f'%{term}%',))
+    rows = cursor.fetchall()
+
+    resultados = [{"label": str(row[0]), "value": str(row[0])} for row in rows]
+
+    conn.close()
+    return jsonify(resultados)
 
 
 @app.route("/tesoreria", methods=["GET", "POST"])
