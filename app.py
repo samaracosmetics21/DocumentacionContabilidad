@@ -1569,7 +1569,8 @@ def autocomplete_ofimatica():
         WHERE NRODCTO LIKE ? AND ORIGEN='COM'
     """
 
-    cursor = conn.cursor()
+    conn = sql_server_connection()  
+    cursor = conn.cursor()          
     cursor.execute(query, (f"%{term}%",))
     rows = cursor.fetchall()
 
@@ -1585,7 +1586,10 @@ def autocomplete_ofimatica():
             "bruto": bruto
         })
 
+    conn.close()  
+
     return jsonify(suggestions)
+
 
 
 
