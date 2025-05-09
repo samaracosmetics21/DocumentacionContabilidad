@@ -1564,13 +1564,14 @@ def autocomplete_ofimatica():
     term = request.args.get("term")
 
     query = """
-        SELECT DISTINCT TOP 30 
-            NRODCTO, PASSWORDIN, BRUTO, 
-            IVABRUTO, VLRETFTE, VRETICA, VRETENIVA, 
-            SUBTOTAL, TOTAL, ABONOS, RETENCIONES, VALOR_PAGAR
-        FROM TRADE
-        WHERE NRODCTO LIKE ? AND ORIGEN='COM'
+    SELECT DISTINCT TOP 30 
+        NRODCTO, PASSWORDIN, BRUTO, IVABRUTO, VLRETFTE, VRETICA, VRETENIVA,
+        (BRUTO + IVABRUTO) AS SUBTOTAL,
+        ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+    FROM TRADE
+    WHERE NRODCTO LIKE ? AND ORIGEN='COM'
     """
+
 
     conn = sql_server_connection()  
     cursor = conn.cursor()          
@@ -1589,10 +1590,8 @@ def autocomplete_ofimatica():
             "vreteniva": str(row[6]) if row[6] is not None else '0.00',
             "subtotal": str(row[7]) if row[7] is not None else '0.00',
             "total": str(row[8]) if row[8] is not None else '0.00',
-            "abonos": str(row[9]) if row[9] is not None else '0.00',
-            "retenciones": str(row[10]) if row[10] is not None else '0.00',
-            "valor_pagar": str(row[11]) if row[11] is not None else '0.00',
         })
+
 
     conn.close()  
     return jsonify(suggestions)
