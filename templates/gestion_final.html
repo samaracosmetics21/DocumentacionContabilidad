@@ -242,28 +242,33 @@
 
     <script>
         document.querySelectorAll('.form-actualizacion').forEach(form => {
-    form.addEventListener('submit', async function (e) {
-        e.preventDefault(); // Evita el reinicio de la página
+            form.addEventListener('submit', async function (e) {
+            e.preventDefault();
 
-        const formData = new FormData(this);
-        const facturaId = formData.get("factura_id");
+            const formData = new FormData(this);
+            const facturaId = formData.get("factura_id");
 
-        try {
-            const response = await fetch("/gestion_final", {
-                method: "POST",
-                body: formData
-            });
+            // DEBUG: Mostrar en consola todos los datos enviados
+            console.log(`Datos enviados para la factura ID ${facturaId}:`);
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
 
-            const result = await response.text(); // o .json() si tu backend responde JSON
-            console.log(`Factura ${facturaId} actualizada con éxito:`, result);
+            try {
+                const response = await fetch("/gestion_final", {
+                    method: "POST",
+                    body: formData
+                });
 
-            // Opcional: puedes mostrar un mensaje visual
-            alert(`Factura ${facturaId} actualizada exitosamente.`);
-        } catch (error) {
-            console.error("Error al enviar el formulario:", error);
-            alert("Hubo un error al actualizar la factura. Revisa la consola.");
-        }
-    });
+                const result = await response.text();
+                console.log(`Respuesta del servidor para factura ${facturaId}:`, result);
+                alert(`Factura ${facturaId} actualizada exitosamente.`);
+            } catch (error) {
+                console.error("Error al enviar el formulario:", error);
+                alert("Hubo un error al actualizar la factura. Revisa la consola.");
+            }
+        });
+
 });
         $(document).ready(function () {
     // Inicializar DataTable
