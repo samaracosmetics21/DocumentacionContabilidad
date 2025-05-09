@@ -1486,11 +1486,12 @@ def obtener_factura(numero_ofimatica):
                (BRUTO + IVABRUTO) AS SUBTOTAL,
                ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
         FROM TRADE
-        WHERE NRODCTO LIKE ? AND ORIGEN='COM'
+        WHERE NRODCTO = ? AND ORIGEN='COM'
     """
     print(f"Consulta SQL que se ejecutará: {query}")
     
-    cursor.execute(query, ('%' + numero_ofimatica + '%',))  # Añadimos el '%' para el LIKE
+    # cursor.execute(query, ('%' + numero_ofimatica + '%',))  # Añadimos el '%' para el LIKE
+    cursor.execute(query, (numero_ofimatica,))
     result = cursor.fetchone()
 
     cursor.close()
