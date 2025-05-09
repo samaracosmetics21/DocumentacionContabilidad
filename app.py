@@ -1570,10 +1570,10 @@ def autocomplete_ofimatica():
     cursor = conn.cursor()
 
     query = """
-        SELECT DISTINCT NRODCTO
+        SELECT DISTINCT TOP 30 NRODCTO
         FROM TRADE
         WHERE NRODCTO LIKE ? AND ORIGEN='COM'
-        LIMIT 30
+
     """
     cursor.execute(query, (f'%{term}%',))
     rows = cursor.fetchall()
