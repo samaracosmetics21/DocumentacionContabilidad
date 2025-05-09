@@ -1559,29 +1559,34 @@ def buscar_ofimatica(numero_ofimatica):
         print(f"Error al procesar la factura: {e}")
         return jsonify({"error": "Error interno al procesar la solicitud."}), 500
     
-@app.route('/autocomplete_ofimatica')
+@app.route("/autocomplete_ofimatica")
 def autocomplete_ofimatica():
-    term = request.args.get('term', '').strip()
-
-    if not term:
-        return jsonify([])
-
-    conn = sql_server_connection()
-    cursor = conn.cursor()
+    term = request.args.get("term")
 
     query = """
-        SELECT DISTINCT TOP 30 NRODCTO
+        SELECT DISTINCT TOP 30 NRODCTO, PASSWORDIN, BRUTO
         FROM TRADE
         WHERE NRODCTO LIKE ? AND ORIGEN='COM'
-
     """
-    cursor.execute(query, (f'%{term}%',))
+
+    cursor = conn.cursor()
+    cursor.execute(query, (f"%{term}%",))
     rows = cursor.fetchall()
 
-    resultados = [{"label": str(row[0]), "value": str(row[0])} for row in rows]
+    suggestions = []
+    for row in rows:
+        nro_dcto = row[0].strip()
+        passwordin = row[1].strip() if row[1] else ''
+        bruto = str(row[2]) if row[2] is not None else '0.00'
 
-    conn.close()
-    return jsonify(resultados)
+        suggestions.append({
+            "nro_dcto": nro_dcto,
+            "passwordin": passwordin,
+            "bruto": bruto
+        })
+
+    return jsonify(suggestions)
+
 
 
 @app.route("/tesoreria", methods=["GET", "POST"])
