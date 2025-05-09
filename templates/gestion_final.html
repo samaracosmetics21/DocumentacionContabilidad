@@ -158,7 +158,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        <form method="POST" action="/gestion_final">
+                        <form class="form-actualizacion" method="POST" action="/gestion_final">
                             <input type="hidden" name="factura_id" value="{{ factura.id }}">
 
                             <select name="clasificacion_final" id="clasificacion_final_{{ factura.id }}" required class="form-select mb-3">
@@ -241,6 +241,30 @@
     
 
     <script>
+        document.querySelectorAll('.form-actualizacion').forEach(form => {
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault(); // Evita el reinicio de la página
+
+        const formData = new FormData(this);
+        const facturaId = formData.get("factura_id");
+
+        try {
+            const response = await fetch("/gestion_final", {
+                method: "POST",
+                body: formData
+            });
+
+            const result = await response.text(); // o .json() si tu backend responde JSON
+            console.log(`Factura ${facturaId} actualizada con éxito:`, result);
+
+            // Opcional: puedes mostrar un mensaje visual
+            alert(`Factura ${facturaId} actualizada exitosamente.`);
+        } catch (error) {
+            console.error("Error al enviar el formulario:", error);
+            alert("Hubo un error al actualizar la factura. Revisa la consola.");
+        }
+    });
+});
         $(document).ready(function () {
     // Inicializar DataTable
     var table = $('#facturasTable').DataTable({
