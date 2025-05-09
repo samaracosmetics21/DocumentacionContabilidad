@@ -1366,7 +1366,7 @@ def gestion_final():
                                     (bruto + IVABRUTO) AS SUBTOTAL, 
                                     ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
                                 FROM TRADE
-                                WHERE NRODCTO = ? AND ORIGEN='COM' 
+                                WHERE NRODCTO = ? AND ORIGEN='COM' AND TIPODCTO='FS'
                             """
                             print(f"Consulta SQL que se ejecutará para Factura de Servicios: {sql_server_query}")
                             cursor_sql.execute(sql_server_query, (f"%{numero_ofimatica}%",))
@@ -1490,8 +1490,8 @@ def obtener_factura(numero_ofimatica):
     """
     print(f"Consulta SQL que se ejecutará: {query}")
     
-    # cursor.execute(query, ('%' + numero_ofimatica + '%',))  # Añadimos el '%' para el LIKE
-    cursor.execute(query, (numero_ofimatica,))
+    cursor.execute(query, ('%' + numero_ofimatica + '%',))  # Añadimos el '%' para el LIKE
+    #cursor.execute(query, (numero_ofimatica,))
     result = cursor.fetchone()
 
     cursor.close()
