@@ -1255,8 +1255,6 @@ def gestion_final():
         abonos = request.form.get("abonos")
         retenciones = request.form.get("retenciones")
         valor_pagar = request.form.get("valor_pagar")
-
-        # Establecer el estado final a 'Aprobado'
         estado_final = 'Aprobado'
 
         print(f"Facture ID: {factura_id}, Numero Ofimatica: {numero_ofimatica}, Abonos: {abonos}, Retenciones: {retenciones}, Valor a Pagar: {valor_pagar}")
@@ -1355,7 +1353,7 @@ def gestion_final():
                             print(f"Consulta SQL que se ejecutará para Factura MP: {sql_server_query}")
                             cursor_sql.execute(sql_server_query, (f"%{numero_ofimatica}%",))
                         elif clasificacion == 'Servicios':
-                            # Es una factura de Servicios (FS)
+                            # Es una factura de Servicios (FS) AND TIPODCTO='FS'
                             sql_server_query = """
                                 SELECT 
                                     NRODCTO, 
@@ -1368,7 +1366,7 @@ def gestion_final():
                                     (bruto + IVABRUTO) AS SUBTOTAL, 
                                     ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
                                 FROM TRADE
-                                WHERE NRODCTO = ? AND ORIGEN='COM' AND TIPODCTO='FS'
+                                WHERE NRODCTO = ? AND ORIGEN='COM' 
                             """
                             print(f"Consulta SQL que se ejecutará para Factura de Servicios: {sql_server_query}")
                             cursor_sql.execute(sql_server_query, (f"%{numero_ofimatica}%",))
