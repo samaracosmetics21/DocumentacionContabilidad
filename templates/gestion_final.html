@@ -242,32 +242,43 @@
 
     <script>
         document.querySelectorAll('.form-actualizacion').forEach(form => {
+            document.querySelectorAll('.form-actualizacion').forEach(form => {
             form.addEventListener('submit', async function (e) {
-            e.preventDefault();
+                e.preventDefault(); // Evita el reinicio de la página
 
-            const formData = new FormData(this);
-            const facturaId = formData.get("factura_id");
+                const formData = new FormData(this);
+                const facturaId = formData.get("factura_id");
 
-            // DEBUG: Mostrar en consola todos los datos enviados
-            console.log(`Datos enviados para la factura ID ${facturaId}:`);
-            for (let [key, value] of formData.entries()) {
-                console.log(`${key}: ${value}`);
-            }
+                // Campos numéricos que deben tener al menos 0 si están vacíos
+                const camposNumericos = [
+                    "bruto", "iva_bruto", "vl_retfte", "v_retica", "v_reteniva",
+                    "subtotal", "total", "abonos", "retenciones", "valor_pagar"
+                ];
 
-            try {
-                const response = await fetch("/gestion_final", {
-                    method: "POST",
-                    body: formData
+                camposNumericos.forEach(campo => {
+                    const valor = formData.get(campo);
+                    if (!valor || isNaN(valor)) {
+                        formData.set(campo, "0");
+                    }
                 });
 
-                const result = await response.text();
-                console.log(`Respuesta del servidor para factura ${facturaId}:`, result);
-                alert(`Factura ${facturaId} actualizada exitosamente.`);
-            } catch (error) {
-                console.error("Error al enviar el formulario:", error);
-                alert("Hubo un error al actualizar la factura. Revisa la consola.");
-            }
+                try {
+                    const response = await fetch("/gestion_final", {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    const result = await response.text(); // o .json() si tu backend responde JSON
+                    console.log(`Factura ${facturaId} actualizada con éxito:`, result);
+
+                    alert(`Factura ${facturaId} actualizada exitosamente.`);
+                } catch (error) {
+                    console.error("Error al enviar el formulario:", error);
+                    alert("Hubo un error al actualizar la factura. Revisa la consola.");
+                }
+            });
         });
+
 
 });
         $(document).ready(function () {
