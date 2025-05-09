@@ -260,30 +260,40 @@
 
     // Autocompletado para campos de número de Ofimática
     $('input[id^="numero_ofimatica_"]').each(function () {
-        const input = $(this);
+    const input = $(this);
 
-        input.autocomplete({
-            source: function (request, response) {
-                $.ajax({
-                    url: "/autocomplete_ofimatica",
-                    data: { term: request.term },
-                    success: function (data) {
-                        response(data.map(item => ({
-                            label: `${item.nro_dcto} - ${item.passwordin} - ${item.bruto}`,
-                            value: item.nro_dcto
-                        })));
-                    }
-                });
-            },
-            minLength: 2,
-            select: function (event, ui) {
-                input.val(ui.item.value);
-                const facturaId = input.attr("id").split("_")[2];
-                buscarOfimatica(facturaId, ui.item.value);
-                return false;
-            }
-        });
+    input.autocomplete({
+        source: function (request, response) {
+            $.ajax({
+                url: "/autocomplete_ofimatica",
+                data: { term: request.term },
+                success: function (data) {
+                    response(data.map(item => ({
+                        label: `${item.nro_dcto} - ${item.passwordin} - ${item.bruto}`,
+                        value: item.nro_dcto,
+                        raw: item  // Pasamos todo el objeto para usarlo luego
+                    })));
+                }
+            });
+        },
+        minLength: 2,
+        select: function (event, ui) {
+            const selectedData = ui.item.raw;
+            input.val(selectedData.nro_dcto); // rellena el input
+
+            // Extrae correctamente el ID de factura del input
+            const facturaId = input.attr("id").split("_").pop();
+
+            // Asigna los campos directamente, sin hacer fetch adicional
+            document.getElementById("password_in_" + facturaId).value = selectedData.passwordin;
+            document.getElementById("bruto_" + facturaId).value = selectedData.bruto;
+            // Puedes llenar otros campos si los traes desde backend también
+
+            return false;
+        }
     });
+});
+
 });
 
 // Manejar tecla Enter en campo de Ofimática
