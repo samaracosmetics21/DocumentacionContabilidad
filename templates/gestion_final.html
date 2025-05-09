@@ -288,6 +288,15 @@
             document.getElementById("password_in_" + facturaId).value = selectedData.passwordin;
             document.getElementById("bruto_" + facturaId).value = selectedData.bruto;
             // Puedes llenar otros campos si los traes desde backend también
+            document.getElementById("iva_bruto_" + facturaId).value = selectedData.ivabruto;
+            document.getElementById("vl_retfte_" + facturaId).value = selectedData.vlretfte;
+            document.getElementById("v_retica_" + facturaId).value = selectedData.vretica;
+            document.getElementById("v_reteniva_" + facturaId).value = selectedData.vreteniva;
+            document.getElementById("subtotal_" + facturaId).value = selectedData.subtotal;
+            document.getElementById("total_" + facturaId).value = selectedData.total;
+            document.getElementById("abonos_" + facturaId).value = selectedData.abonos;
+            document.getElementById("retenciones_" + facturaId).value = selectedData.retenciones;
+            document.getElementById("valor_pagar_" + facturaId).value = selectedData.valor_pagar;
 
             return false;
         }

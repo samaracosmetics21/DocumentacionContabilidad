@@ -1564,7 +1564,10 @@ def autocomplete_ofimatica():
     term = request.args.get("term")
 
     query = """
-        SELECT DISTINCT TOP 30 NRODCTO, PASSWORDIN, BRUTO
+        SELECT DISTINCT TOP 30 
+            NRODCTO, PASSWORDIN, BRUTO, 
+            IVABRUTO, VLRETFTE, VRETICA, VRETENIVA, 
+            SUBTOTAL, TOTAL, ABONOS, RETENCIONES, VALOR_PAGAR
         FROM TRADE
         WHERE NRODCTO LIKE ? AND ORIGEN='COM'
     """
@@ -1576,19 +1579,24 @@ def autocomplete_ofimatica():
 
     suggestions = []
     for row in rows:
-        nro_dcto = row[0].strip()
-        passwordin = row[1].strip() if row[1] else ''
-        bruto = str(row[2]) if row[2] is not None else '0.00'
-
         suggestions.append({
-            "nro_dcto": nro_dcto,
-            "passwordin": passwordin,
-            "bruto": bruto
+            "nro_dcto": row[0].strip() if row[0] else '',
+            "passwordin": row[1].strip() if row[1] else '',
+            "bruto": str(row[2]) if row[2] is not None else '0.00',
+            "ivabruto": str(row[3]) if row[3] is not None else '0.00',
+            "vlretfte": str(row[4]) if row[4] is not None else '0.00',
+            "vretica": str(row[5]) if row[5] is not None else '0.00',
+            "vreteniva": str(row[6]) if row[6] is not None else '0.00',
+            "subtotal": str(row[7]) if row[7] is not None else '0.00',
+            "total": str(row[8]) if row[8] is not None else '0.00',
+            "abonos": str(row[9]) if row[9] is not None else '0.00',
+            "retenciones": str(row[10]) if row[10] is not None else '0.00',
+            "valor_pagar": str(row[11]) if row[11] is not None else '0.00',
         })
 
     conn.close()  
-
     return jsonify(suggestions)
+
 
 
 
