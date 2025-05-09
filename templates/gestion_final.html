@@ -241,10 +241,10 @@
     
 
     <script>
-        document.querySelectorAll('.form-actualizacion').forEach(form => {
+      
             document.querySelectorAll('.form-actualizacion').forEach(form => {
             form.addEventListener('submit', async function (e) {
-                e.preventDefault(); // Evita el reinicio de la página
+               // e.preventDefault(); 
 
                 const formData = new FormData(this);
                 const facturaId = formData.get("factura_id");
@@ -277,7 +277,7 @@
                     alert("Hubo un error al actualizar la factura. Revisa la consola.");
                 }
             });
-        });
+        
 
 
 });
