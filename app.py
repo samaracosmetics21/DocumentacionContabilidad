@@ -1670,18 +1670,21 @@ def tesoreria():
 
             # Consultar los documentos de los últimos 45 días
             query_sql_server = """
-                SELECT 
-                LTRIM(RTRIM(dcto)) AS dcto,
-                LTRIM(RTRIM(fecha)) AS fecha,
-                LTRIM(RTRIM(cheque)) AS cheque,
-                LTRIM(RTRIM(nit)) AS nit,
-                LTRIM(RTRIM(PASSWORDIN)) AS PASSWORDIN,
-                LTRIM(RTRIM(valor)) AS valor,
-                LTRIM(RTRIM(tipodcto)) AS tipodcto,
-                LTRIM(RTRIM(factura)) AS factura
-            FROM ABOCXP
-            WHERE fecha >= DATEADD(DAY, -30, GETDATE()) AND tipodcto='CE' 
-            ORDER BY factura
+                 SELECT
+                    LTRIM(RTRIM(ABOCXP.dcto)) AS dcto,
+                    LTRIM(RTRIM(ABOCXP.fecha)) AS fecha,
+                    LTRIM(RTRIM(ABOCXP.cheque)) AS cheque,
+                    LTRIM(RTRIM(ABOCXP.nit)) AS nit,
+                    LTRIM(RTRIM(ABOCXP.PASSWORDIN)) AS PASSWORDIN,
+                    ISNULL(FORMAT(CAST(ABOCXP.valor AS MONEY), 'N0', 'es-CO'), '0') AS valor,
+                    LTRIM(RTRIM(ABOCXP.tipodcto)) AS tipodcto,
+                    LTRIM(RTRIM(ABOCXP.factura)) AS factura,
+                    LTRIM(RTRIM(mtprocli.nombre)) AS nombre_tercero
+                FROM ABOCXP
+                INNER JOIN mtprocli ON ABOCXP.nit = mtprocli.NIT
+                WHERE fecha >= DATEADD(DAY, -30, GETDATE())
+                AND tipodcto = 'CE'
+                ORDER BY factura;
             """
             print(f"Ejecutando consulta SQL Server: {query_sql_server}")
             cursor_sql_server.execute(query_sql_server)
