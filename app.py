@@ -1706,8 +1706,10 @@ def tesoreria():
                 "passwordin": passwordin,
                 "valor": valor,
                 "tipodcto": tipodcto,
-                "factura": factura
-            } for dcto, fecha, cheque, nit, passwordin, valor, tipodcto, factura in documentos]
+                "factura": factura,
+                "nombre_tercero": nombre_tercero
+            } for dcto, fecha, cheque, nit, passwordin, valor, tipodcto, factura, nombre_tercero in documentos]
+
 
             # Mostrar los documentos encontrados antes de enviarlos
             print(f"Documentos procesados para plantilla: {len(documentos_encontrados)}")
