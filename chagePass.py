@@ -37,6 +37,6 @@ def actualizar_password_usuario(usuario_id, nueva_contraseña):
             conn_pg.close()
 
 
-usuario_id = 7  
+usuario_id = 19  
 nueva_contraseña = "Nueva contraseña"  
 actualizar_password_usuario(usuario_id, nueva_contraseña)
