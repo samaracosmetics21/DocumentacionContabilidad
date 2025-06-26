@@ -84,40 +84,28 @@ def buscar_cliente():
 @login_required
 def index():
     if request.method == "POST":
-        # Procesar datos del formulario
-        nit = request.form.get("nit")
-        numero_factura = request.form.get("numero_factura")
-        fecha_seleccionada = request.form.get("fecha")
-        clasificacion = request.form.get("clasificacion")
-        archivo = request.files.get("archivo")
-        observaciones = request.form.get("observaciones")
-
-        if not archivo or not archivo.filename:
-            flash("Debes subir un archivo", "error")
-            return redirect(request.url)
-
-        # Definir clasificación de factura en texto
-        clasificacion_texto = "Facturas" if clasificacion == "1" else "Servicios"
-
-        # Crear la jerarquía de directorios: clasificacion/nit/fecha
-        fecha_directorio = fecha_seleccionada.replace("-", "")  
-        ruta_directorio = os.path.join(
-            app.config["UPLOAD_FOLDER"], clasificacion_texto, nit, fecha_directorio
-        )
-        os.makedirs(ruta_directorio, exist_ok=True)  # Crear directorios si no existen
-
-        # Guardar el archivo en la ruta definida
-        archivo_path = os.path.join(ruta_directorio, archivo.filename)
-        archivo.save(archivo_path)
-
-        # Calcular la ruta relativa desde el directorio 'static/uploads'
-        ruta_relativa = os.path.relpath(archivo_path, app.config["UPLOAD_FOLDER"])
-
-        # Aquí eliminamos el prefijo 'static/' de la ruta relativa
-        ruta_relativa = ruta_relativa.replace("static/", "")  # Eliminar la parte 'static/' de la ruta
-
-        # Consultar NIT en SQL Server
         try:
+            # Procesar datos del formulario
+            nit = request.form.get("nit")
+            numero_factura = request.form.get("numero_factura")
+            fecha_seleccionada = request.form.get("fecha")
+            clasificacion = request.form.get("clasificacion")
+            archivo = request.files.get("archivo")
+            observaciones = request.form.get("observaciones")
+
+            if not archivo or not archivo.filename:
+                return jsonify(success=False, message="Debes subir un archivo"), 400
+
+            clasificacion_texto = "Facturas" if clasificacion == "1" else "Servicios"
+            fecha_directorio = fecha_seleccionada.replace("-", "")
+            ruta_directorio = os.path.join(app.config["UPLOAD_FOLDER"], clasificacion_texto, nit, fecha_directorio)
+            os.makedirs(ruta_directorio, exist_ok=True)
+            archivo_path = os.path.join(ruta_directorio, archivo.filename)
+            archivo.save(archivo_path)
+            ruta_relativa = os.path.relpath(archivo_path, app.config["UPLOAD_FOLDER"])
+            ruta_relativa = ruta_relativa.replace("static/", "")
+
+            # Consultar NIT en SQL Server
             conn = sql_server_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT nombre FROM MTPROCLI WHERE LTRIM(RTRIM(nit)) = ?", nit.strip())
@@ -125,26 +113,19 @@ def index():
             if row:
                 nombre = row[0]
             else:
-                flash("NIT no encontrado en SQL Server", "error")
-                return redirect(request.url)
-        except Exception as e:
-            flash(f"Error consultando NIT: {str(e)}", "error")
-            return redirect(request.url)
+                return jsonify(success=False, message="NIT no encontrado en SQL Server"), 400
 
-        # Guardar datos en PostgreSQL
-        try:
+            # Guardar datos en PostgreSQL
             conn_pg = postgres_connection()
             if not conn_pg:
                 raise Exception("Conexión a PostgreSQL fallida. Verifica los parámetros de conexión en db_config.py.")
-            print("Conexión exitosa a PostgreSQL dentro de Flask")
             cursor_pg = conn_pg.cursor()
 
-            # Verificar si ya existe un registro con el mismo número de factura
             cursor_pg.execute("SELECT COUNT(*) FROM facturas WHERE numero_factura = %s", (numero_factura,))
             count = cursor_pg.fetchone()[0]
             if count > 0:
-                flash("La factura con este número ya ha sido registrada", "error")
-                return redirect(request.url)
+                return jsonify(success=False, message="La factura con este número ya ha sido registrada"), 400
+
             fecha_registro = datetime.now()
             print("Datos a insertar en PostgreSQL:")
             print(f"NIT: {nit}")
@@ -165,21 +146,15 @@ def index():
                 fecha_registro, clasificacion_texto, ruta_relativa, observaciones
             ))
             conn_pg.commit()
-            flash("Factura registrada exitosamente", "success")
 
-            # Realizar el SELECT y mostrar en consola
-            cursor_pg.execute("SELECT * FROM facturas")
-            facturas = cursor_pg.fetchall()
-            print("Datos actuales en la tabla 'facturas':")
-            for factura in facturas:
-                print(factura)
+            return jsonify(success=True)
+        
         except Exception as e:
-            print("Error al intentar conectarse a PostgreSQL desde Flask:")
-            print(e)
-            flash(f"Error guardando en PostgreSQL: {str(e)}", "error")
-            return redirect(request.url)
+            print("Error durante el POST:", e)
+            return jsonify(success=False, message=str(e)), 500
 
     return render_template("index.html")
+
 
 
 
