@@ -121,7 +121,7 @@ def index():
                 raise Exception("Conexión a PostgreSQL fallida. Verifica los parámetros de conexión en db_config.py.")
             cursor_pg = conn_pg.cursor()
 
-            cursor_pg.execute("SELECT COUNT(*) FROM facturas WHERE numero_factura = %s", (numero_factura,))
+            cursor_pg.execute("SELECT COUNT(*) FROM facturas WHERE numero_factura = %s AND nit = %s", (numero_factura, nit))
             count = cursor_pg.fetchone()[0]
             if count > 0:
                 return jsonify(success=False, message="La factura con este número ya ha sido registrada"), 400
