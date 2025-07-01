@@ -189,6 +189,103 @@ def buscar_nombre():
     finally:
         conn.close()
 
+# endpoint para modulo de editar facturas
+@app.route("/buscar_factura", methods=["GET"])
+@login_required
+def buscar_factura():
+    factura_id = request.args.get("id")
+
+    if not factura_id:
+        return jsonify({"error": "ID de factura no proporcionado"}), 400
+
+    try:
+        conn_pg = postgres_connection()
+        cursor_pg = conn_pg.cursor()
+        cursor_pg.execute("SELECT id, nit, nombre, numero_factura, fecha_seleccionada, clasificacion, archivo_path, observaciones_regis FROM facturas WHERE id = %s", (factura_id,))
+        row = cursor_pg.fetchone()
+
+        if row:
+            factura = {
+                "id": row[0],
+                "nit": row[1],
+                "nombre": row[2],
+                "numero_factura": row[3],
+                "fecha_seleccionada": row[4].strftime("%Y-%m-%d"),
+                "clasificacion": row[5],
+                "archivo_path": row[6],
+                "observaciones_regis": row[7]
+            }
+            return jsonify(factura)
+        else:
+            return jsonify({"error": "Factura no encontrada"}), 404
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/actualizar_factura", methods=["POST"])
+@login_required
+def actualizar_factura():
+    try:
+        factura_id = request.form.get("id")
+        nit = request.form.get("nit")
+        numero_factura = request.form.get("numero_factura")
+        fecha = request.form.get("fecha")
+        clasificacion = request.form.get("clasificacion")
+        observaciones = request.form.get("observaciones")
+        archivo = request.files.get("archivo")
+
+        if not factura_id:
+            return jsonify({"error": "ID de factura no proporcionado"}), 400
+
+        # Obtener nombre desde SQL Server
+        conn_sql = sql_server_connection()
+        cursor_sql = conn_sql.cursor()
+        cursor_sql.execute("SELECT nombre FROM MTPROCLI WHERE LTRIM(RTRIM(nit)) = ?", nit.strip())
+        row = cursor_sql.fetchone()
+        if not row:
+            return jsonify({"error": "NIT no encontrado en SQL Server"}), 400
+        nombre = row[0]
+
+        # Construir ruta de archivo si se cargó uno nuevo
+        ruta_relativa = None
+        if archivo and archivo.filename:
+            clasificacion_texto = "Facturas" if clasificacion == "Facturas" else "Servicios"
+            fecha_directorio = fecha.replace("-", "")
+            ruta_directorio = os.path.join(app.config["UPLOAD_FOLDER"], clasificacion_texto, nit, fecha_directorio)
+            os.makedirs(ruta_directorio, exist_ok=True)
+            archivo_path = os.path.join(ruta_directorio, archivo.filename)
+            archivo.save(archivo_path)
+            ruta_relativa = os.path.relpath(archivo_path, app.config["UPLOAD_FOLDER"])
+            ruta_relativa = ruta_relativa.replace("static/", "")
+
+        # Actualizar en PostgreSQL
+        conn_pg = postgres_connection()
+        cursor_pg = conn_pg.cursor()
+
+        query = """
+            UPDATE facturas
+            SET nit = %s, nombre = %s, numero_factura = %s,
+                fecha_seleccionada = %s, clasificacion = %s,
+                observaciones_regis = %s
+                {archivo_sql}
+            WHERE id = %s
+        """.format(archivo_sql=", archivo_path = %s" if ruta_relativa else "")
+
+        params = [nit, nombre, numero_factura, fecha, clasificacion, observaciones]
+        if ruta_relativa:
+            params.append(ruta_relativa)
+        params.append(factura_id)
+
+        cursor_pg.execute(query, tuple(params))
+        conn_pg.commit()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # Gestión de Grupos
 @app.route("/grupos", methods=["GET", "POST"])
 @login_required
