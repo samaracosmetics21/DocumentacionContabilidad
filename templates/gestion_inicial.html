@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Facturas</title>
+    <title>Registro de Órdenes de Compra</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
             background-color: #f4f7fc;
-        }
-        .form-container {
-            margin-top: 30px;
         }
         .list-group-item {
             cursor: pointer;
@@ -27,16 +24,27 @@
     </style>
 </head>
 <body>
-    <div class="container form-container">
-        <h2>Registro Ordenes Compras</h2>
+<div class="container py-4">
+    <h2>Gestión de Órdenes de Compra</h2>
+
+    <!-- Pestañas -->
+    <ul class="nav nav-tabs mb-3" id="ordenTabs">
+        <li class="nav-item">
+            <a class="nav-link active" href="#" id="tab-registro">Registrar Orden</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" id="tab-edicion">Editar Orden</a>
+        </li>
+    </ul>
+
+    <!-- Registro -->
+    <div id="registro-container">
         <form method="POST" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="nrodcto" class="form-label">Número de Orden</label>
                 <input type="text" id="nrodcto" name="nrodcto" class="form-control" placeholder="Escribe el número de orden" oninput="buscarOrdenes()" required>
                 <div id="sugerencias" class="list-group" style="max-height: 200px; overflow-y: auto; display: none;"></div>
             </div>
-            
-            <!-- Campos de solo lectura que se llenarán al seleccionar una orden -->
             <div class="mb-3">
                 <label for="nit" class="form-label">NIT</label>
                 <input type="text" id="nit" name="nit" class="form-control" readonly>
@@ -50,7 +58,7 @@
                 <input type="file" id="orden_compra" name="orden_compra" class="form-control" accept=".pdf" required>
             </div>
 
-            <!-- Campos ocultos para enviar al backend -->
+            <!-- Campos ocultos -->
             <input type="hidden" id="nrodcto_oc" name="nrodcto_oc">
             <input type="hidden" id="nit_oc" name="nit_oc">
             <input type="hidden" id="nombre_cliente_oc" name="nombre_cliente_oc">
@@ -62,71 +70,140 @@
         </form>
     </div>
 
+    <!-- Edición -->
+    <div id="edicion-container" style="display: none;">
+        <form id="form-edicion" method="POST" action="{{ url_for('editar_orden') }}" enctype="multipart/form-data">
+            <input type="hidden" name="id_oc" id="id_oc">
+            <div class="mb-3">
+                <label class="form-label">Número de Orden</label>
+                <input type="text" id="edit_nrodcto" name="nrodcto_oc" class="form-control" readonly>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">NIT</label>
+                <input type="text" id="edit_nit" name="nit_oc" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Nombre Cliente</label>
+                <input type="text" id="edit_nombre_cliente" name="nombre_cliente_oc" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Actualizar PDF (opcional)</label>
+                <input type="file" name="orden_compra" class="form-control" accept=".pdf">
+            </div>
+            <button type="submit" class="btn btn-warning">Actualizar</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <h2>Listado de Órdenes Registradas</h2>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Orden</th>
+            <th>NIT</th>
+            <th>Cliente</th>
+            <th>Fecha Reg.</th>
+            <th>Acción</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for oc in ordenes %}
+        <tr>
+            <td>{{ oc.id }}</td>
+            <td>{{ oc.nrodcto_oc }}</td>
+            <td>{{ oc.nit_oc }}</td>
+            <td>{{ oc.nombre_cliente_oc }}</td>
+            <td>{{ oc.hora_registro_oc.strftime("%Y-%m-%d %H:%M") }}</td>
+            <td><button class="btn btn-sm btn-secondary" onclick="loadEdicion({{ oc.id }})">Editar</button></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
     <div class="footer-text">
         <small>&copy; 2025 Sistema de Gestión Documental</small>
     </div>
+</div>
 
-    <script>
-        // Función para realizar la búsqueda de órdenes de compra
-        function buscarOrdenes() {
-            let nrodcto = document.getElementById("nrodcto").value.trim();
-
-            if (nrodcto.length >= 3) {  
-                $.ajax({
-                    url: '/buscar_orden',  // Ruta del backend que maneja la búsqueda
-                    type: 'GET',
-                    data: { q: nrodcto },  // Parámetro de búsqueda
-                    success: function(response) {
-                        const sugerencias = document.getElementById("sugerencias");
-                        sugerencias.innerHTML = "";
-                        if (response.length > 0) {
-                            sugerencias.style.display = "block";
-                            response.forEach(orden => {
-                                const div = document.createElement("div");
-                                div.classList.add("list-group-item");
-                                div.textContent = `Orden: ${orden.nrodcto} - ${orden.nombre_cliente}`;  
-                                div.onclick = function() {
-                                    // Llenar los campos con los datos de la orden seleccionada
-                                    document.getElementById("nrodcto").value = orden.nrodcto;
-                                    document.getElementById("nit").value = orden.nit;
-                                    document.getElementById("nombre_cliente").value = orden.nombre_cliente;
-                                    
-                                    // Llenar los campos ocultos
-                                    document.getElementById("nrodcto_oc").value = orden.nrodcto;
-                                    document.getElementById("nit_oc").value = orden.nit;
-                                    document.getElementById("nombre_cliente_oc").value = orden.nombre_cliente;
-                                    
-                                    // Si hay información adicional, se puede completar más adelante
-                                    document.getElementById("cantidad_oc").value = orden.cantidad_oc || 0;
-                                    document.getElementById("nombre_referencia_oc").value = orden.nombre_referencia_oc || "None";
-                                    document.getElementById("numero_referencia_oc").value = orden.numero_referencia_oc || "None";
-                                    
-                                    sugerencias.style.display = "none";  // Ocultar las sugerencias
-                                };
-                                sugerencias.appendChild(div);
-                            });
-                        } else {
-                            sugerencias.style.display = "none";  // Ocultar si no hay sugerencias
-                        }
-                    },
-                    error: function() {
-                        alert("Error al realizar la búsqueda. Intente nuevamente.");
+<script>
+    function buscarOrdenes() {
+        let nrodcto = document.getElementById("nrodcto").value.trim();
+        if (nrodcto.length >= 3) {
+            $.ajax({
+                url: '/buscar_orden',
+                type: 'GET',
+                data: { q: nrodcto },
+                success: function(response) {
+                    const sugerencias = document.getElementById("sugerencias");
+                    sugerencias.innerHTML = "";
+                    if (response.length > 0) {
+                        sugerencias.style.display = "block";
+                        response.forEach(orden => {
+                            const div = document.createElement("div");
+                            div.classList.add("list-group-item");
+                            div.textContent = `Orden: ${orden.nrodcto} - ${orden.nombre_cliente}`;
+                            div.onclick = function() {
+                                document.getElementById("nrodcto").value = orden.nrodcto;
+                                document.getElementById("nit").value = orden.nit;
+                                document.getElementById("nombre_cliente").value = orden.nombre_cliente;
+                                document.getElementById("nrodcto_oc").value = orden.nrodcto;
+                                document.getElementById("nit_oc").value = orden.nit;
+                                document.getElementById("nombre_cliente_oc").value = orden.nombre_cliente;
+                                document.getElementById("cantidad_oc").value = orden.cantidad_oc || 0;
+                                document.getElementById("nombre_referencia_oc").value = orden.nombre_referencia_oc || "None";
+                                document.getElementById("numero_referencia_oc").value = orden.numero_referencia_oc || "None";
+                                sugerencias.style.display = "none";
+                            };
+                            sugerencias.appendChild(div);
+                        });
+                    } else {
+                        sugerencias.style.display = "none";
                     }
-                });
-            } else {
-                document.getElementById("sugerencias").style.display = "none";  // Ocultar las sugerencias si la longitud del texto es menor que 3
-            }
+                },
+                error: function() {
+                    alert("Error al realizar la búsqueda. Intente nuevamente.");
+                }
+            });
+        } else {
+            document.getElementById("sugerencias").style.display = "none";
         }
+    }
 
-        function confirmarAprobacion() {
-            if (confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.")) {
-                
-                return true;
-            } else {
-               
-                return false;
-            }
-        }
-    </script>
+    function confirmarAprobacion() {
+        return confirm("¿Estás seguro de aprobar esta factura? Esta acción no se puede deshacer.");
+    }
+
+    function loadEdicion(id) {
+        $.getJSON(`/get_orden?id=${id}`, data => {
+            if (data.error) return alert(data.error);
+            $('#id_oc').val(data.id);
+            $('#edit_nrodcto').val(data.nrodcto_oc);
+            $('#edit_nit').val(data.nit_oc);
+            $('#edit_nombre_cliente').val(data.nombre_cliente_oc);
+            $('#tab-edicion').click(); // Cambia a la pestaña de edición
+        });
+    }
+
+    $(document).ready(function () {
+        $("#tab-registro").click(function (e) {
+            e.preventDefault();
+            $("#registro-container").show();
+            $("#edicion-container").hide();
+            $("#tab-registro").addClass("active");
+            $("#tab-edicion").removeClass("active");
+        });
+
+        $("#tab-edicion").click(function (e) {
+            e.preventDefault();
+            $("#registro-container").hide();
+            $("#edicion-container").show();
+            $("#tab-edicion").addClass("active");
+            $("#tab-registro").removeClass("active");
+        });
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

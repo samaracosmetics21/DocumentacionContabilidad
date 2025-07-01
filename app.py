@@ -2101,8 +2101,54 @@ def gestion_inicial():
         except Exception as e:
             flash(f"Error al guardar en PostgreSQL: {str(e)}", "error")
             return redirect(request.url)
+        
+    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC LIMIT 50")
+    ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
 
-    return render_template("gestion_inicial.html")
+    return render_template("gestion_inicial.html", ordenes=ordenes)
+
+@app.route("/get_orden")
+@login_required
+def get_orden():
+    id_oc = request.args.get("id")
+    if not id_oc:
+        return jsonify(error="ID no proporcionado"), 400
+    conn_pg = postgres_connection()
+    cursor_pg = conn_pg.cursor()
+
+    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc FROM ordenes_compras WHERE id=%s", (id_oc,))
+    row = cursor_pg.fetchone()
+    if not row:
+        return jsonify(error="Orden no encontrada"), 404
+    return jsonify(dict(zip([d[0] for d in cursor_pg.description], row)))
+
+@app.route("/editar_orden", methods=["POST"])
+@login_required
+def editar_orden():
+    id_oc = request.form.get("id_oc")
+    nit = request.form.get("nit_oc").strip()
+    nombre = request.form.get("nombre_cliente_oc").strip()
+    archivo = request.files.get("orden_compra")
+
+    conn_pg = postgres_connection()
+    cursor_pg = conn_pg.cursor()
+
+    if archivo and archivo.filename:
+        fecha_directorio = datetime.now().strftime("%Y%m%d")
+        ruta_directorio = os.path.join(app.config["UPLOAD_FOLDER"], nit, fecha_directorio)
+        os.makedirs(ruta_directorio, exist_ok=True)
+        archivo_path = os.path.join(ruta_directorio, archivo.filename)
+        archivo.save(archivo_path)
+        ruta_relativa = os.path.relpath(archivo_path, app.config["UPLOAD_FOLDER"])
+        ruta_relativa = ruta_relativa.replace("static/", "")
+        cursor_pg.execute("UPDATE ordenes_compras SET nit_oc=%s, nombre_cliente_oc=%s, archivo_path_oc=%s WHERE id=%s",
+                          (nit, nombre, ruta_relativa, id_oc))
+    else:
+        cursor_pg.execute("UPDATE ordenes_compras SET nit_oc=%s, nombre_cliente_oc=%s WHERE id=%s",
+                          (nit, nombre, id_oc))
+    conn_pg.commit()
+    flash("Orden actualizada exitosamente", "success")
+    return redirect(url_for('gestion_inicial_mp'))
 
 
 
