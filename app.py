@@ -234,6 +234,7 @@ def actualizar_factura():
         clasificacion = request.form.get("clasificacion")
         observaciones = request.form.get("observaciones")
         archivo = request.files.get("archivo")
+        clasificacion_texto = "Facturas" if clasificacion == "1" else "Servicios"
 
         if not factura_id:
             return jsonify({"error": "ID de factura no proporcionado"}), 400
@@ -250,7 +251,7 @@ def actualizar_factura():
         # Construir ruta de archivo si se cargó uno nuevo
         ruta_relativa = None
         if archivo and archivo.filename:
-            clasificacion_texto = "Facturas" if clasificacion == "Facturas" else "Servicios"
+            #clasificacion_texto = "Facturas" if clasificacion == "Facturas" else "Servicios"
             fecha_directorio = fecha.replace("-", "")
             ruta_directorio = os.path.join(app.config["UPLOAD_FOLDER"], clasificacion_texto, nit, fecha_directorio)
             os.makedirs(ruta_directorio, exist_ok=True)
@@ -272,7 +273,7 @@ def actualizar_factura():
             WHERE id = %s
         """.format(archivo_sql=", archivo_path = %s" if ruta_relativa else "")
 
-        params = [nit, nombre, numero_factura, fecha, clasificacion, observaciones]
+        params = [nit, nombre, numero_factura, fecha, clasificacion_texto, observaciones]
         if ruta_relativa:
             params.append(ruta_relativa)
         params.append(factura_id)
