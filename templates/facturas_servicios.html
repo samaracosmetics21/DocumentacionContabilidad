@@ -139,6 +139,7 @@
                         <table id="facturasTable" class="table table-striped">
                             <thead>
                                 <tr>
+                                    <th>Id</th>
                                     <th>NIT</th>
                                     <th>Nombre</th>
                                     <th>Número de Factura</th>
@@ -170,6 +171,7 @@
                             <tbody>
                                 {% for factura in facturas %}
                                 <tr>
+                                    <td>{{ factura[28] }}</td>
                                     <td>{{ factura[0] }}</td>
                                     <td>{{ factura[1] }}</td>
                                     <td>{{ factura[2] }}</td>
