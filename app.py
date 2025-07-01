@@ -2148,7 +2148,7 @@ def editar_orden():
                           (nit, nombre, id_oc))
     conn_pg.commit()
     flash("Orden actualizada exitosamente", "success")
-    return redirect(url_for('gestion_inicial_mp'))
+    return redirect(url_for('gestion_inicial'))
 
 
 
