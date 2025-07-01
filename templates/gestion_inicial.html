@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Órdenes de Compra</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
@@ -97,7 +100,7 @@
     <hr>
 
     <h2>Listado de Órdenes Registradas</h2>
-    <table class="table table-striped">
+    <table class="table table-striped" id="tabla-ordenes">
         <thead>
         <tr>
             <th>ID</th>
@@ -126,8 +129,18 @@
         <small>&copy; 2025 Sistema de Gestión Documental</small>
     </div>
 </div>
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
+        $('#tabla-ordenes').DataTable({
+        language: {
+            url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+        },
+        pageLength: 10
+    });
+
     function buscarOrdenes() {
         let nrodcto = document.getElementById("nrodcto").value.trim();
         if (nrodcto.length >= 3) {

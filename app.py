@@ -2102,7 +2102,7 @@ def gestion_inicial():
             flash(f"Error al guardar en PostgreSQL: {str(e)}", "error")
             return redirect(request.url)
         
-    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC LIMIT 50")
+    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
     ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
 
     return render_template("gestion_inicial.html", ordenes=ordenes)
