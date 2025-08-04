@@ -1704,15 +1704,15 @@ def gestion_final():
                     print(f"  ✓ COINCIDENCIA AUTOMÁTICA ENCONTRADA para factura {factura_id}")
                     # Cargar automáticamente los datos
                     ofimatica_data[factura_id] = {
-                        "numero_ofimatica": resultado_auto[0],  # NRODCTO
-                        "passwordin": resultado_auto[1],        # PASSWORDIN
-                        "bruto": resultado_auto[2],             # BRUTO
-                        "ivabruto": resultado_auto[3],          # IVABRUTO
-                        "vlretfte": resultado_auto[4],          # VLRETFTE
-                        "vretica": resultado_auto[5],           # VRETICA
-                        "vreteniva": resultado_auto[6],         # VRETENIVA
-                        "subtotal": resultado_auto[7],          # SUBTOTAL
-                        "total": resultado_auto[8],             # TOTAL
+                        "numero_ofimatica": str(resultado_auto[0]),  # NRODCTO
+                        "passwordin": str(resultado_auto[1]),        # PASSWORDIN
+                        "bruto": float(resultado_auto[2]) if resultado_auto[2] else 0,             # BRUTO
+                        "ivabruto": float(resultado_auto[3]) if resultado_auto[3] else 0,          # IVABRUTO
+                        "vlretfte": float(resultado_auto[4]) if resultado_auto[4] else 0,          # VLRETFTE
+                        "vretica": float(resultado_auto[5]) if resultado_auto[5] else 0,           # VRETICA
+                        "vreteniva": float(resultado_auto[6]) if resultado_auto[6] else 0,         # VRETENIVA
+                        "subtotal": float(resultado_auto[7]) if resultado_auto[7] else 0,          # SUBTOTAL
+                        "total": float(resultado_auto[8]) if resultado_auto[8] else 0,             # TOTAL
                         "auto_cargado": True                    # Marcar como cargado automáticamente
                     }
                 else:
@@ -1740,8 +1740,23 @@ def gestion_final():
                     
                     if resultados_multiple:
                         print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
+                        # Convertir a lista de diccionarios para JSON
+                        opciones_list = []
+                        for resultado in resultados_multiple:
+                            opciones_list.append({
+                                "nrodcto": str(resultado[0]),
+                                "passwordin": str(resultado[1]),
+                                "bruto": float(resultado[2]) if resultado[2] else 0,
+                                "ivabruto": float(resultado[3]) if resultado[3] else 0,
+                                "vlretfte": float(resultado[4]) if resultado[4] else 0,
+                                "vretica": float(resultado[5]) if resultado[5] else 0,
+                                "vreteniva": float(resultado[6]) if resultado[6] else 0,
+                                "subtotal": float(resultado[7]) if resultado[7] else 0,
+                                "total": float(resultado[8]) if resultado[8] else 0,
+                                "dctoprv": str(resultado[9]) if resultado[9] else ""
+                            })
                         ofimatica_data[factura_id] = {
-                            "opciones_multiple": resultados_multiple,
+                            "opciones_multiple": opciones_list,
                             "auto_cargado": False
                         }
                     else:
@@ -1750,7 +1765,6 @@ def gestion_final():
                             "auto_cargado": False,
                             "sin_registros": True
                         }
-                        
             except Exception as e:
                 print(f"  ⚠ Error en búsqueda automática para factura {factura_id}: {e}")
                 ofimatica_data[factura_id] = {

@@ -417,9 +417,9 @@
                 div.className = 'option-item';
                 div.innerHTML = `
                     <strong>Opción ${index + 1}:</strong><br>
-                    NRODCTO: ${opcion[0]} | DCTOPRV: ${opcion[8]}<br>
-                    BRUTO: ${opcion[2]} | IVABRUTO: ${opcion[3]}<br>
-                    PASSWORDIN: ${opcion[1]}
+                    NRODCTO: ${opcion.nrodcto} | DCTOPRV: ${opcion.dctoprv}<br>
+                    BRUTO: ${opcion.bruto} | IVABRUTO: ${opcion.ivabruto}<br>
+                    PASSWORDIN: ${opcion.passwordin}
                 `;
                 div.onclick = () => seleccionarOpcion(facturaId, opcion, index);
                 container.appendChild(div);
@@ -452,15 +452,15 @@
                 const opcion = window.opcionSeleccionada.opcion;
                 
                 // Cargar datos de la opción seleccionada
-                document.getElementById(`numero_ofimatica_${facturaId}`).value = opcion[0];
-                document.getElementById(`password_in_${facturaId}`).value = opcion[1];
-                document.getElementById(`bruto_${facturaId}`).value = opcion[2];
-                document.getElementById(`iva_bruto_${facturaId}`).value = opcion[3];
-                document.getElementById(`vl_retfte_${facturaId}`).value = opcion[4];
-                document.getElementById(`v_retica_${facturaId}`).value = opcion[5];
-                document.getElementById(`v_reteniva_${facturaId}`).value = opcion[6];
-                document.getElementById(`subtotal_${facturaId}`).value = opcion[7];
-                document.getElementById(`total_${facturaId}`).value = opcion[8];
+                document.getElementById(`numero_ofimatica_${facturaId}`).value = opcion.nrodcto;
+                document.getElementById(`password_in_${facturaId}`).value = opcion.passwordin;
+                document.getElementById(`bruto_${facturaId}`).value = opcion.bruto;
+                document.getElementById(`iva_bruto_${facturaId}`).value = opcion.ivabruto;
+                document.getElementById(`vl_retfte_${facturaId}`).value = opcion.vlretfte;
+                document.getElementById(`v_retica_${facturaId}`).value = opcion.vretica;
+                document.getElementById(`v_reteniva_${facturaId}`).value = opcion.vreteniva;
+                document.getElementById(`subtotal_${facturaId}`).value = opcion.subtotal;
+                document.getElementById(`total_${facturaId}`).value = opcion.total;
                 
                 // Marcar como seleccionado manualmente
                 const campos = [
