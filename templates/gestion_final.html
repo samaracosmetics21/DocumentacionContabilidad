@@ -98,46 +98,136 @@
             margin-bottom: 1rem;
         }
         .usuario-logueado { 
-            color: green; 
-            font-weight: bold; 
+            color: white;
+            margin-right: 1rem;
+        }
+        .auto-loaded {
+            background-color: #d4edda !important;
+            border-color: #c3e6cb !important;
+        }
+        .auto-loaded:focus {
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+        }
+        .auto-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: 5px;
+        }
+        .manual-badge {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: 5px;
+        }
+        .multiple-options {
+            background-color: #fff3cd !important;
+            border-color: #ffeaa7 !important;
+        }
+        .multiple-options:focus {
+            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25) !important;
+        }
+        .modal-options {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .option-item {
+            cursor: pointer;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            transition: background-color 0.2s;
+        }
+        .option-item:hover {
+            background-color: #f8f9fa;
+        }
+        .option-item.selected {
+            background-color: #007bff;
+            color: white;
         }
     </style>
 </head>
 <body>
-    <!-- Navegación -->
-    <nav class="navbar navbar-expand-lg navbar-light">
-        <div class="container">
-            <a class="navbar-brand" href="/">Causaciones</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Gestión Documentos Conta</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#">
-                           <span class="usuario-logueado">Hola, {{ session["usuario"] }}</span> 
-                       </a> 
-                   </li>
+                        <a class="nav-link" href="/">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/bodega">Bodega</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/compras">Compras</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/servicios">Servicios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/asignaciones">Asignaciones</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pago_servicios">Pago Servicios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pago_mp">Pago MP</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/gestion_final">Gestión Final</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/tesoreria">Tesoreria</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/facturas_resumen">Resumen</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auditor">Auditor</a>
+                    </li>
                 </ul>
+                <span class="usuario-logueado">Usuario: {{ session.usuario }}</span>
+                <a href="/logout" class="btn btn-outline-light">Cerrar Sesión</a>
             </div>
         </div>
     </nav>
 
-    <!-- Contenido Principal -->
     <div class="container">
-        <h1>Causaciones</h1>
+        <h1>Gestión Final - Causaciones</h1>
+        
+        <!-- Alertas de automatización -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'info' if category == 'info' else 'warning' if category == 'warning' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
         {% if facturas_data %}
-        <table class="table table-striped table-bordered" id="facturasTable">
+        <table class="table table-striped" id="facturasTable">
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>NIT</th>
                     <th>Nombre</th>
-                    <th>Número de Factura</th>
+                    <th>Número Factura</th>
                     <th>Fecha</th>
                     <th>Clasificación</th>
-                    <th>Hora Aprobación</th>
+                    <th>Pago Servicios</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -171,6 +261,11 @@
                             <div class="input-group mb-3">
                                 <input type="text" name="numero_ofimatica" id="numero_ofimatica_{{ factura.id }}" 
                                        placeholder="Número Ofimática" class="form-control" onkeydown="verificarEnter(event, '{{ factura.id }}')" required>
+                                {% if factura.ofimatica_data.auto_cargado %}
+                                    <span class="auto-badge">AUTO</span>
+                                {% elif factura.ofimatica_data.opciones_multiple %}
+                                    <span class="manual-badge">MÚLTIPLE</span>
+                                {% endif %}
                             </div>
 
                             <div class="input-group mb-3">
@@ -230,6 +325,28 @@
         {% endif %}
     </div>
 
+    <!-- Modal para opciones múltiples -->
+    <div class="modal fade" id="modalOpciones" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Seleccionar Registro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Se encontraron múltiples registros. Selecciona el correcto:</p>
+                    <div id="opcionesContainer" class="modal-options">
+                        <!-- Las opciones se cargarán dinámicamente -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnSeleccionarOpcion">Seleccionar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS y DataTables JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -238,11 +355,145 @@
     <!-- jQuery UI JS -->
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
-    
-
     <script>
+        // Datos de automatización desde el servidor
+        const ofimaticaData = {{ ofimatica_data | tojson | safe }};
+        
+        // Función para cargar datos automáticamente
+        function cargarDatosAutomaticos() {
+            Object.keys(ofimaticaData).forEach(facturaId => {
+                const data = ofimaticaData[facturaId];
+                
+                if (data.auto_cargado) {
+                    // Cargar datos automáticamente
+                    document.getElementById(`numero_ofimatica_${facturaId}`).value = data.numero_ofimatica;
+                    document.getElementById(`password_in_${facturaId}`).value = data.passwordin;
+                    document.getElementById(`bruto_${facturaId}`).value = data.bruto;
+                    document.getElementById(`iva_bruto_${facturaId}`).value = data.ivabruto;
+                    document.getElementById(`vl_retfte_${facturaId}`).value = data.vlretfte;
+                    document.getElementById(`v_retica_${facturaId}`).value = data.vretica;
+                    document.getElementById(`v_reteniva_${facturaId}`).value = data.vreteniva;
+                    document.getElementById(`subtotal_${facturaId}`).value = data.subtotal;
+                    document.getElementById(`total_${facturaId}`).value = data.total;
+                    
+                    // Marcar campos como cargados automáticamente
+                    const campos = [
+                        `numero_ofimatica_${facturaId}`,
+                        `password_in_${facturaId}`,
+                        `bruto_${facturaId}`,
+                        `iva_bruto_${facturaId}`,
+                        `vl_retfte_${facturaId}`,
+                        `v_retica_${facturaId}`,
+                        `v_reteniva_${facturaId}`,
+                        `subtotal_${facturaId}`,
+                        `total_${facturaId}`
+                    ];
+                    
+                    campos.forEach(campoId => {
+                        const campo = document.getElementById(campoId);
+                        if (campo) {
+                            campo.classList.add('auto-loaded');
+                        }
+                    });
+                    
+                } else if (data.opciones_multiple) {
+                    // Marcar para selección manual
+                    const numeroOfimatica = document.getElementById(`numero_ofimatica_${facturaId}`);
+                    if (numeroOfimatica) {
+                        numeroOfimatica.classList.add('multiple-options');
+                        numeroOfimatica.addEventListener('click', () => mostrarOpciones(facturaId, data.opciones_multiple));
+                    }
+                }
+            });
+        }
+        
+        // Función para mostrar opciones múltiples
+        function mostrarOpciones(facturaId, opciones) {
+            const container = document.getElementById('opcionesContainer');
+            container.innerHTML = '';
+            
+            opciones.forEach((opcion, index) => {
+                const div = document.createElement('div');
+                div.className = 'option-item';
+                div.innerHTML = `
+                    <strong>Opción ${index + 1}:</strong><br>
+                    NRODCTO: ${opcion[0]} | DCTOPRV: ${opcion[8]}<br>
+                    BRUTO: ${opcion[2]} | IVABRUTO: ${opcion[3]}<br>
+                    PASSWORDIN: ${opcion[1]}
+                `;
+                div.onclick = () => seleccionarOpcion(facturaId, opcion, index);
+                container.appendChild(div);
+            });
+            
+            // Guardar facturaId para el botón de selección
+            window.facturaSeleccionada = facturaId;
+            window.opcionSeleccionada = null;
+            
+            const modal = new bootstrap.Modal(document.getElementById('modalOpciones'));
+            modal.show();
+        }
+        
+        // Función para seleccionar una opción
+        function seleccionarOpcion(facturaId, opcion, index) {
+            // Remover selección anterior
+            document.querySelectorAll('.option-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Marcar como seleccionada
+            event.target.closest('.option-item').classList.add('selected');
+            window.opcionSeleccionada = { opcion, index };
+        }
+        
+        // Función para confirmar selección
+        document.getElementById('btnSeleccionarOpcion').addEventListener('click', function() {
+            if (window.opcionSeleccionada) {
+                const facturaId = window.facturaSeleccionada;
+                const opcion = window.opcionSeleccionada.opcion;
+                
+                // Cargar datos de la opción seleccionada
+                document.getElementById(`numero_ofimatica_${facturaId}`).value = opcion[0];
+                document.getElementById(`password_in_${facturaId}`).value = opcion[1];
+                document.getElementById(`bruto_${facturaId}`).value = opcion[2];
+                document.getElementById(`iva_bruto_${facturaId}`).value = opcion[3];
+                document.getElementById(`vl_retfte_${facturaId}`).value = opcion[4];
+                document.getElementById(`v_retica_${facturaId}`).value = opcion[5];
+                document.getElementById(`v_reteniva_${facturaId}`).value = opcion[6];
+                document.getElementById(`subtotal_${facturaId}`).value = opcion[7];
+                document.getElementById(`total_${facturaId}`).value = opcion[8];
+                
+                // Marcar como seleccionado manualmente
+                const campos = [
+                    `numero_ofimatica_${facturaId}`,
+                    `password_in_${facturaId}`,
+                    `bruto_${facturaId}`,
+                    `iva_bruto_${facturaId}`,
+                    `vl_retfte_${facturaId}`,
+                    `v_retica_${facturaId}`,
+                    `v_reteniva_${facturaId}`,
+                    `subtotal_${facturaId}`,
+                    `total_${facturaId}`
+                ];
+                
+                campos.forEach(campoId => {
+                    const campo = document.getElementById(campoId);
+                    if (campo) {
+                        campo.classList.remove('multiple-options');
+                        campo.classList.add('auto-loaded');
+                    }
+                });
+                
+                // Cerrar modal
+                bootstrap.Modal.getInstance(document.getElementById('modalOpciones')).hide();
+            }
+        });
+        
+        // Cargar datos automáticamente al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarDatosAutomaticos();
+        });
       
-            document.querySelectorAll('.form-actualizacion').forEach(form => {
+        document.querySelectorAll('.form-actualizacion').forEach(form => {
             form.addEventListener('submit', async function (e) {
                // e.preventDefault(); 
 

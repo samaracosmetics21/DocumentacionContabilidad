@@ -1292,12 +1292,263 @@ def pago_mp():
     return render_template("pago_mp.html", facturas=facturas_aprobadas)
 
 
+# FUNCIÓN ORIGINAL COMENTADA - VERSIÓN MANUAL
+# @app.route("/gestion_final", methods=["GET", "POST"])
+# def gestion_final():
+#     print("Iniciando vista de gestión final...")
+# 
+#     conn_pg = postgres_connection()
+#     cursor_pg = conn_pg.cursor()
+# 
+#     # Obtener el ID del usuario autenticado desde la sesión
+#     usuario_id = session.get("user_id")
+#     print(f"Usuario autenticado: {usuario_id}")
+# 
+#     if not usuario_id:
+#         flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
+#         print("Error: sesión no válida o usuario no autenticado.")
+#         return redirect(url_for("login"))
+# 
+#     # Conexión a PostgreSQL
+#     conn_pg = postgres_connection()
+#     cursor_pg = conn_pg.cursor()
+# 
+#     if request.method == "POST":
+#         # Recoger los valores enviados desde el formulario
+#         factura_id = request.form.get("factura_id")
+#         numero_ofimatica = request.form.get("numero_ofimatica")
+#         password_in = request.form.get("password_in")
+#         bruto = request.form.get("bruto")
+#         iva_bruto = request.form.get("iva_bruto")
+#         vl_retfte = request.form.get("vl_retfte")
+#         v_retica = request.form.get("v_retica")
+#         v_reteniva = request.form.get("v_reteniva")
+#         subtotal = request.form.get("subtotal")
+#         total = request.form.get("total")
+#         clasificacion_final = request.form.get("clasificacion_final")
+#         abonos = request.form.get("abonos")
+#         retenciones = request.form.get("retenciones")
+#         valor_pagar = request.form.get("valor_pagar")
+#         estado_final = 'Aprobado'
+# 
+#         print(f"Facture ID: {factura_id}, Numero Ofimatica: {numero_ofimatica}, Abonos: {abonos}, Retenciones: {retenciones}, Valor a Pagar: {valor_pagar}")
+# 
+#         try:
+#             # Definir la consulta SQL para la actualización de la factura
+#             update_query = """
+#                 UPDATE facturas
+#                 SET numero_ofimatica = %s,
+#                     password_in = %s,
+#                     bruto = %s,
+#                     iva_bruto = %s,
+#                     vl_retfte = %s,
+#                     v_retica = %s,
+#                     v_reteniva = %s,
+#                     subtotal = %s,
+#                     total = %s,
+#                     clasificacion_final = %s,
+#                     abonos = %s,
+#                     retenciones = %s,
+#                     valor_pagar = %s,
+#                     estado_final = %s,
+#                     usuario_update_final = %s,
+#                     hora_actualizacion_final = CURRENT_TIMESTAMP
+#                 WHERE id = %s
+#             """
+# 
+#             # Ejecutar la consulta SQL con los valores recibidos desde el formulario
+#             cursor_pg.execute(update_query, (
+#                 numero_ofimatica, password_in, bruto, iva_bruto, vl_retfte, v_retica, v_reteniva, subtotal, total, clasificacion_final, abonos, retenciones, valor_pagar, estado_final, usuario_id, factura_id
+#             ))
+# 
+#             print("Consulta SQL:", "UPDATE facturas SET estado = %s WHERE id = %s")
+#             print("Parámetros:", (estado_final, factura_id))
+# 
+#             # Confirmar los cambios en la base de datos
+#             conn_pg.commit()
+#             flash("Factura actualizada exitosamente.", "success")
+#             print(f"Factura {factura_id} actualizada correctamente.")
+# 
+#         except Exception as e:
+#             # En caso de error, mostrar mensaje y hacer rollback
+#             flash(f"Hubo un error al actualizar la factura: {e}", "error")
+#             conn_pg.rollback()
+#             print(f"Error al actualizar la factura: {e}")
+# 
+#     cursor_sql = None  # Inicializar cursor_sql antes de usarlo
+#     conn_sql = None  # Inicializar conn_sql antes de usarlo
+# 
+#     # Diccionario para almacenar los datos de ofimatica
+#     ofimatica_data = {}
+# 
+#     if request.method == "POST":
+#         print("Método POST detectado. Procesando facturas...")
+# 
+#         # Conectamos a SQL Server una vez antes de procesar todas las facturas
+#         conn_sql = sql_server_connection()
+#         cursor_sql = conn_sql.cursor()
+# 
+#         # Procesar el número de ofimática de cada factura
+#         for factura in request.form.getlist("factura_id"):  # Iterar sobre las facturas
+#             numero_ofimatica = request.form.get(f"numero_ofimatica_{factura}")
+#             print(f"Número de ofimatica recibido para la factura {factura}: {numero_ofimatica}")
+# 
+#             if numero_ofimatica:
+#                 try:
+#                     # Primero consultar en PostgreSQL la clasificación de la factura
+#                     query_clasificacion = """
+#                         SELECT clasificacion
+#                         FROM facturas
+#                         WHERE id = %s
+#                     """
+#                     print(f"Consulta en PostgreSQL para obtener clasificación de la factura con ID {factura}.")
+#                     cursor_pg.execute(query_clasificacion, (factura,))
+#                     clasificacion = cursor_pg.fetchone()
+#                     print(f"Clasificación obtenida: {clasificacion}")
+# 
+#                     if clasificacion:
+#                         clasificacion = clasificacion[0]  # 'Facturas' o 'Servicios'
+#                         if clasificacion == 'Facturas':
+#                             # Es una factura MP (FR)
+#                             sql_server_query = """
+#                                 SELECT 
+#                                     NRODCTO, 
+#                                     PASSWORDIN, 
+#                                     BRUTO, 
+#                                     IVABRUTO, 
+#                                     VLRETFTE, 
+#                                     VRETICA, 
+#                                     VRETENIVA, 
+#                                     (bruto + IVABRUTO) AS SUBTOTAL, 
+#                                     ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+#                                 FROM TRADE
+#                                 WHERE NRODCTO = ? AND ORIGEN='COM' AND TIPODCTO='FR'
+#                             """
+#                             print(f"Consulta SQL que se ejecutará para Factura MP: {sql_server_query}")
+#                             cursor_sql.execute(sql_server_query, (numero_ofimatica,))
+#                         elif clasificacion == 'Servicios':
+#                             # Es una factura de Servicios (FS) AND TIPODCTO='FS'
+#                             sql_server_query = """
+#                                 SELECT 
+#                                     NRODCTO, 
+#                                     PASSWORDIN, 
+#                                     BRUTO, 
+#                                     IVABRUTO, 
+#                                     VLRETFTE, 
+#                                     VRETICA, 
+#                                     VRETENIVA, 
+#                                     (bruto + IVABRUTO) AS SUBTOTAL, 
+#                                     ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+#                                 FROM TRADE
+#                                 WHERE NRODCTO = ? AND ORIGEN='COM' -- AND TIPODCTO='FS'
+#                             """
+#                             print(f"Consulta SQL que se ejecutará para Factura de Servicios: {sql_server_query}")
+#                             cursor_sql.execute(sql_server_query, (numero_ofimatica,))
+#                         else:
+#                             print(f"Clasificación no válida para la factura {factura}: {clasificacion}")
+#                             continue  # Si la clasificación no es válida, continuar con la siguiente factura
+# 
+#                         # Ejecutar la consulta en SQL Server
+#                         ofimatica_result = cursor_sql.fetchone()
+#                         print(f"Datos obtenidos de SQL Server: {ofimatica_result}")
+# 
+#                         if ofimatica_result:
+#                             # Si se encontraron datos, asignarlos a un diccionario para la factura específica
+#                             ofimatica_data[factura] = {
+#                                 "numero_ofimatica": ofimatica_result[0],  # NRODCTO
+#                                 "passwordin": ofimatica_result[1],        # PASSWORDIN
+#                                 "bruto": ofimatica_result[2],             # BRUTO
+#                                 "ivabruto": ofimatica_result[3],          # IVABRUTO
+#                                 "vlretfte": ofimatica_result[4],          # VLRETFTE
+#                                 "vretica": ofimatica_result[5],           # VRETICA
+#                                 "vreteniva": ofimatica_result[6],         # VRETENIVA
+#                                 "subtotal": ofimatica_result[7],          # SUBTOTAL
+#                                 "total": ofimatica_result[8]              # TOTAL
+#                             }
+#                         else:
+#                             flash(f"No se encontró la factura con el número de ofimática {numero_ofimatica}.", "error")
+#                             print(f"No se encontró la factura con el número de ofimática {numero_ofimatica}.")
+#                     else:
+#                         print(f"No se encontró clasificación para la factura {factura}.")
+#                         continue  # Si no se encuentra clasificación, pasar a la siguiente factura
+# 
+#                 except (psycopg2.Error, pyodbc.Error) as e:
+#                     print(f"Error al consultar la base de datos: {e}")
+#                     flash("Ocurrió un error al obtener los datos.", "error")
+# 
+#     try:
+#         # Validar si el usuario pertenece al grupo de contabilidad
+#         print("Validando grupo del usuario...")
+#         query_validar_grupo = """
+#             SELECT g.grupo 
+#             FROM usuarios u
+#             INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+#             WHERE u.id = %s AND g.grupo = 'Contabilidad'
+#         """
+#         print(f"Consulta SQL que se ejecutará: {query_validar_grupo} con el usuario_id {usuario_id}")
+#         
+#         cursor_pg.execute(query_validar_grupo, (usuario_id,))
+#         grupo = cursor_pg.fetchone()
+#         print(f"Resultado de validación de grupo: {grupo}")
+# 
+#         if not grupo:
+#             flash("No tienes permisos para acceder a esta funcionalidad.", "error")
+#             print("Error: usuario no pertenece al grupo Contabilidad.")
+#             return redirect("/")
+# 
+#         # Obtener las facturas aprobadas   120225 pago_mp = 'Aprobado' 
+#         print("Consultando facturas aprobadas...")
+#         query_facturas_aprobadas = """
+#             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
+#                 pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp, nombre
+#             FROM facturas
+#             WHERE (pago_servicios = 'Aprobado' OR estado_compras = 'Aprobado') 
+#             AND estado_final = 'Pendiente'
+#             ORDER BY id
+#         """
+#         print(f"Consulta SQL que se ejecutará: {query_facturas_aprobadas}")
+#         
+#         cursor_pg.execute(query_facturas_aprobadas)
+#         facturas = cursor_pg.fetchall()
+#         print(f"Facturas encontradas: {facturas}")
+# 
+#         # Crear un diccionario de datos para las facturas que se mostrarán en la plantilla
+#         facturas_data = []
+#         for factura in facturas:
+#             facturas_data.append({
+#                 "id": factura[0],
+#                 "nit": factura[1],
+#                 "numero_factura": factura[2],
+#                 "fecha_seleccionada": factura[3],
+#                 "clasificacion": factura[4],
+#                 "archivo_path": factura[5],
+#                 "pago_servicios": factura[6],
+#                 "pago_mp": factura[7],
+#                 "hora_aprobacion_pago_servicio": factura[8],
+#                 "hora_aprobacion_pago_mp": factura[9],
+#                 "nombre": factura[10],
+#                 "ofimatica_data": ofimatica_data.get(factura[0], {})  # Asignar los datos de ofimática a cada factura
+#             })
+# 
+#     except Exception as e:
+#         print(f"Error general en /gestion_final: {e}")
+#         flash(f"Error al gestionar la vista final: {str(e)}", "error")
+#         facturas_data = []
+#         ofimatica_data = {}
+# 
+#     finally:
+#         if cursor_pg:
+#             cursor_pg.close()
+#         if conn_pg:
+#             conn_pg.close()
+# 
+#     print("Renderizando la plantilla gestion_final.html...")
+#     return render_template("gestion_final.html", facturas_data=facturas_data, ofimatica_data=ofimatica_data)
+
+# NUEVA FUNCIÓN AUTOMATIZADA
 @app.route("/gestion_final", methods=["GET", "POST"])
 def gestion_final():
-    print("Iniciando vista de gestión final...")
-
-    conn_pg = postgres_connection()
-    cursor_pg = conn_pg.cursor()
+    print("Iniciando vista de gestión final AUTOMATIZADA...")
 
     # Obtener el ID del usuario autenticado desde la sesión
     usuario_id = session.get("user_id")
@@ -1330,7 +1581,7 @@ def gestion_final():
         valor_pagar = request.form.get("valor_pagar")
         estado_final = 'Aprobado'
 
-        print(f"Facture ID: {factura_id}, Numero Ofimatica: {numero_ofimatica}, Abonos: {abonos}, Retenciones: {retenciones}, Valor a Pagar: {valor_pagar}")
+        print(f"Factura ID: {factura_id}, Numero Ofimatica: {numero_ofimatica}")
 
         try:
             # Definir la consulta SQL para la actualización de la factura
@@ -1360,9 +1611,6 @@ def gestion_final():
                 numero_ofimatica, password_in, bruto, iva_bruto, vl_retfte, v_retica, v_reteniva, subtotal, total, clasificacion_final, abonos, retenciones, valor_pagar, estado_final, usuario_id, factura_id
             ))
 
-            print("Consulta SQL:", "UPDATE facturas SET estado = %s WHERE id = %s")
-            print("Parámetros:", (estado_final, factura_id))
-
             # Confirmar los cambios en la base de datos
             conn_pg.commit()
             flash("Factura actualizada exitosamente.", "success")
@@ -1374,107 +1622,6 @@ def gestion_final():
             conn_pg.rollback()
             print(f"Error al actualizar la factura: {e}")
 
-    cursor_sql = None  # Inicializar cursor_sql antes de usarlo
-    conn_sql = None  # Inicializar conn_sql antes de usarlo
-
-    # Diccionario para almacenar los datos de ofimatica
-    ofimatica_data = {}
-
-    if request.method == "POST":
-        print("Método POST detectado. Procesando facturas...")
-
-        # Conectamos a SQL Server una vez antes de procesar todas las facturas
-        conn_sql = sql_server_connection()
-        cursor_sql = conn_sql.cursor()
-
-        # Procesar el número de ofimática de cada factura
-        for factura in request.form.getlist("factura_id"):  # Iterar sobre las facturas
-            numero_ofimatica = request.form.get(f"numero_ofimatica_{factura}")
-            print(f"Número de ofimatica recibido para la factura {factura}: {numero_ofimatica}")
-
-            if numero_ofimatica:
-                try:
-                    # Primero consultar en PostgreSQL la clasificación de la factura
-                    query_clasificacion = """
-                        SELECT clasificacion
-                        FROM facturas
-                        WHERE id = %s
-                    """
-                    print(f"Consulta en PostgreSQL para obtener clasificación de la factura con ID {factura}.")
-                    cursor_pg.execute(query_clasificacion, (factura,))
-                    clasificacion = cursor_pg.fetchone()
-                    print(f"Clasificación obtenida: {clasificacion}")
-
-                    if clasificacion:
-                        clasificacion = clasificacion[0]  # 'Facturas' o 'Servicios'
-                        if clasificacion == 'Facturas':
-                            # Es una factura MP (FR)
-                            sql_server_query = """
-                                SELECT 
-                                    NRODCTO, 
-                                    PASSWORDIN, 
-                                    BRUTO, 
-                                    IVABRUTO, 
-                                    VLRETFTE, 
-                                    VRETICA, 
-                                    VRETENIVA, 
-                                    (bruto + IVABRUTO) AS SUBTOTAL, 
-                                    ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
-                                FROM TRADE
-                                WHERE NRODCTO = ? AND ORIGEN='COM' AND TIPODCTO='FR'
-                            """
-                            print(f"Consulta SQL que se ejecutará para Factura MP: {sql_server_query}")
-                            cursor_sql.execute(sql_server_query, (numero_ofimatica,))
-                        elif clasificacion == 'Servicios':
-                            # Es una factura de Servicios (FS) AND TIPODCTO='FS'
-                            sql_server_query = """
-                                SELECT 
-                                    NRODCTO, 
-                                    PASSWORDIN, 
-                                    BRUTO, 
-                                    IVABRUTO, 
-                                    VLRETFTE, 
-                                    VRETICA, 
-                                    VRETENIVA, 
-                                    (bruto + IVABRUTO) AS SUBTOTAL, 
-                                    ((bruto + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
-                                FROM TRADE
-                                WHERE NRODCTO = ? AND ORIGEN='COM' -- AND TIPODCTO='FS'
-                            """
-                            print(f"Consulta SQL que se ejecutará para Factura de Servicios: {sql_server_query}")
-                            cursor_sql.execute(sql_server_query, (numero_ofimatica,))
-                        else:
-                            print(f"Clasificación no válida para la factura {factura}: {clasificacion}")
-                            continue  # Si la clasificación no es válida, continuar con la siguiente factura
-
-                        # Ejecutar la consulta en SQL Server
-                        ofimatica_result = cursor_sql.fetchone()
-                        print(f"Datos obtenidos de SQL Server: {ofimatica_result}")
-
-                        if ofimatica_result:
-                            # Si se encontraron datos, asignarlos a un diccionario para la factura específica
-                            ofimatica_data[factura] = {
-                                "numero_ofimatica": ofimatica_result[0],  # NRODCTO
-                                "passwordin": ofimatica_result[1],        # PASSWORDIN
-                                "bruto": ofimatica_result[2],             # BRUTO
-                                "ivabruto": ofimatica_result[3],          # IVABRUTO
-                                "vlretfte": ofimatica_result[4],          # VLRETFTE
-                                "vretica": ofimatica_result[5],           # VRETICA
-                                "vreteniva": ofimatica_result[6],         # VRETENIVA
-                                "subtotal": ofimatica_result[7],          # SUBTOTAL
-                                "total": ofimatica_result[8]              # TOTAL
-                            }
-                        else:
-                            flash(f"No se encontró la factura con el número de ofimática {numero_ofimatica}.", "error")
-                            print(f"No se encontró la factura con el número de ofimática {numero_ofimatica}.")
-                    else:
-                        print(f"No se encontró clasificación para la factura {factura}.")
-                        continue  # Si no se encuentra clasificación, pasar a la siguiente factura
-
-                except (psycopg2.Error, pyodbc.Error) as e:
-                    print(f"Error al consultar la base de datos: {e}")
-                    flash("Ocurrió un error al obtener los datos.", "error")
-
     try:
         # Validar si el usuario pertenece al grupo de contabilidad
         print("Validando grupo del usuario...")
@@ -1484,7 +1631,6 @@ def gestion_final():
             INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
             WHERE u.id = %s AND g.grupo = 'Contabilidad'
         """
-        print(f"Consulta SQL que se ejecutará: {query_validar_grupo} con el usuario_id {usuario_id}")
         
         cursor_pg.execute(query_validar_grupo, (usuario_id,))
         grupo = cursor_pg.fetchone()
@@ -1495,7 +1641,7 @@ def gestion_final():
             print("Error: usuario no pertenece al grupo Contabilidad.")
             return redirect("/")
 
-        # Obtener las facturas aprobadas   120225 pago_mp = 'Aprobado' 
+        # Obtener las facturas aprobadas
         print("Consultando facturas aprobadas...")
         query_facturas_aprobadas = """
             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
@@ -1505,15 +1651,114 @@ def gestion_final():
             AND estado_final = 'Pendiente'
             ORDER BY id
         """
-        print(f"Consulta SQL que se ejecutará: {query_facturas_aprobadas}")
         
         cursor_pg.execute(query_facturas_aprobadas)
         facturas = cursor_pg.fetchall()
-        print(f"Facturas encontradas: {facturas}")
+        print(f"Facturas encontradas: {len(facturas)}")
 
-        # Crear un diccionario de datos para las facturas que se mostrarán en la plantilla
+        # BÚSQUEDA AUTOMÁTICA EN SQL SERVER
+        print("Iniciando búsqueda automática en SQL Server...")
+        conn_sql = sql_server_connection()
+        cursor_sql = conn_sql.cursor()
+        
         facturas_data = []
+        ofimatica_data = {}
+        
         for factura in facturas:
+            factura_id = factura[0]
+            nit = factura[1]
+            numero_factura = factura[2].strip()  # Limpiar espacios
+            clasificacion = factura[4]
+            
+            # Determinar tipo de documento
+            if clasificacion == 'Facturas':
+                tipodcto = 'FR'
+            elif clasificacion == 'Servicios':
+                tipodcto = 'FS'
+            else:
+                continue
+            
+            print(f"Buscando automáticamente: NIT={nit}, Factura='{numero_factura}', Tipo={tipodcto}")
+            
+            # Búsqueda automática en SQL Server usando dctoprv
+            query_auto = """
+                SELECT 
+                    NRODCTO, 
+                    PASSWORDIN, 
+                    BRUTO, 
+                    IVABRUTO, 
+                    VLRETFTE, 
+                    VRETICA, 
+                    VRETENIVA, 
+                    (BRUTO + IVABRUTO) AS SUBTOTAL, 
+                    ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+                FROM TRADE
+                WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+            """
+            
+            try:
+                cursor_sql.execute(query_auto, (numero_factura, nit, tipodcto))
+                resultado_auto = cursor_sql.fetchone()
+                
+                if resultado_auto:
+                    print(f"  ✓ COINCIDENCIA AUTOMÁTICA ENCONTRADA para factura {factura_id}")
+                    # Cargar automáticamente los datos
+                    ofimatica_data[factura_id] = {
+                        "numero_ofimatica": resultado_auto[0],  # NRODCTO
+                        "passwordin": resultado_auto[1],        # PASSWORDIN
+                        "bruto": resultado_auto[2],             # BRUTO
+                        "ivabruto": resultado_auto[3],          # IVABRUTO
+                        "vlretfte": resultado_auto[4],          # VLRETFTE
+                        "vretica": resultado_auto[5],           # VRETICA
+                        "vreteniva": resultado_auto[6],         # VRETENIVA
+                        "subtotal": resultado_auto[7],          # SUBTOTAL
+                        "total": resultado_auto[8],             # TOTAL
+                        "auto_cargado": True                    # Marcar como cargado automáticamente
+                    }
+                else:
+                    print(f"  ✗ No se encontró coincidencia automática para factura {factura_id}")
+                    # Buscar múltiples registros para mostrar opciones
+                    query_multiple = """
+                        SELECT TOP 5
+                            NRODCTO, 
+                            PASSWORDIN, 
+                            BRUTO, 
+                            IVABRUTO, 
+                            VLRETFTE, 
+                            VRETICA, 
+                            VRETENIVA, 
+                            (BRUTO + IVABRUTO) AS SUBTOTAL, 
+                            ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL,
+                            LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
+                        FROM TRADE
+                        WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                        ORDER BY NRODCTO
+                    """
+                    
+                    cursor_sql.execute(query_multiple, (nit, tipodcto))
+                    resultados_multiple = cursor_sql.fetchall()
+                    
+                    if resultados_multiple:
+                        print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
+                        ofimatica_data[factura_id] = {
+                            "opciones_multiple": resultados_multiple,
+                            "auto_cargado": False
+                        }
+                    else:
+                        print(f"  ✗ No se encontraron registros para factura {factura_id}")
+                        ofimatica_data[factura_id] = {
+                            "auto_cargado": False,
+                            "sin_registros": True
+                        }
+                        
+            except Exception as e:
+                print(f"  ⚠ Error en búsqueda automática para factura {factura_id}: {e}")
+                ofimatica_data[factura_id] = {
+                    "auto_cargado": False,
+                    "error_busqueda": str(e)
+                }
+            
+            # Crear datos de factura para la plantilla
             facturas_data.append({
                 "id": factura[0],
                 "nit": factura[1],
@@ -1526,8 +1771,20 @@ def gestion_final():
                 "hora_aprobacion_pago_servicio": factura[8],
                 "hora_aprobacion_pago_mp": factura[9],
                 "nombre": factura[10],
-                "ofimatica_data": ofimatica_data.get(factura[0], {})  # Asignar los datos de ofimática a cada factura
+                "ofimatica_data": ofimatica_data.get(factura[0], {})
             })
+        
+        # Estadísticas de automatización
+        auto_cargadas = sum(1 for data in ofimatica_data.values() if data.get("auto_cargado", False))
+        total_facturas = len(facturas_data)
+        
+        print(f"\n📊 ESTADÍSTICAS DE AUTOMATIZACIÓN:")
+        print(f"  Total facturas: {total_facturas}")
+        print(f"  Cargadas automáticamente: {auto_cargadas}")
+        print(f"  Porcentaje de éxito: {(auto_cargadas/total_facturas*100):.1f}%" if total_facturas > 0 else "0%")
+        
+        if auto_cargadas > 0:
+            flash(f"✅ {auto_cargadas} facturas cargadas automáticamente", "success")
 
     except Exception as e:
         print(f"Error general en /gestion_final: {e}")
@@ -1540,6 +1797,10 @@ def gestion_final():
             cursor_pg.close()
         if conn_pg:
             conn_pg.close()
+        if 'cursor_sql' in locals():
+            cursor_sql.close()
+        if 'conn_sql' in locals():
+            conn_sql.close()
 
     print("Renderizando la plantilla gestion_final.html...")
     return render_template("gestion_final.html", facturas_data=facturas_data, ofimatica_data=ofimatica_data)
