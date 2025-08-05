@@ -1664,6 +1664,11 @@ def gestion_final():
         facturas_data = []
         ofimatica_data = {}
         
+        # Contadores para estadísticas
+        auto_actualizadas = 0
+        requieren_manual = 0
+        errores_actualizacion = 0
+        
         for factura in facturas:
             factura_id = factura[0]
             nit = factura[1]
@@ -1702,7 +1707,8 @@ def gestion_final():
                 
                 if resultado_auto:
                     print(f"  ✓ COINCIDENCIA AUTOMÁTICA ENCONTRADA para factura {factura_id}")
-                    # Cargar automáticamente los datos
+                    
+                    # Cargar datos para el frontend
                     ofimatica_data[factura_id] = {
                         "numero_ofimatica": str(resultado_auto[0]),  # NRODCTO
                         "passwordin": str(resultado_auto[1]),        # PASSWORDIN
@@ -1713,8 +1719,75 @@ def gestion_final():
                         "vreteniva": float(resultado_auto[6]) if resultado_auto[6] else 0,         # VRETENIVA
                         "subtotal": float(resultado_auto[7]) if resultado_auto[7] else 0,          # SUBTOTAL
                         "total": float(resultado_auto[8]) if resultado_auto[8] else 0,             # TOTAL
-                        "auto_cargado": True                    # Marcar como cargado automáticamente
+                        "auto_cargado": True,                    # Marcar como cargado automáticamente
+                        "actualizado_auto": False                # Inicialmente no actualizado
                     }
+                    
+                    # EJECUTAR UPDATE AUTOMÁTICO INMEDIATO
+                    try:
+                        # Definir la consulta SQL para la actualización automática
+                        update_query_auto = """
+                            UPDATE facturas
+                            SET numero_ofimatica = %s,
+                                password_in = %s,
+                                bruto = %s,
+                                iva_bruto = %s,
+                                vl_retfte = %s,
+                                v_retica = %s,
+                                v_reteniva = %s,
+                                subtotal = %s,
+                                total = %s,
+                                clasificacion_final = %s,
+                                abonos = %s,
+                                retenciones = %s,
+                                valor_pagar = %s,
+                                estado_final = %s,
+                                usuario_update_final = %s,
+                                hora_actualizacion_final = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                        """
+                        
+                        # Determinar clasificación final basada en el tipo de documento
+                        clasificacion_final = 'FR' if tipodcto == 'FR' else 'FS'
+                        
+                        # Calcular valores adicionales
+                        abonos = 0  # Valor por defecto
+                        retenciones = float(resultado_auto[4]) if resultado_auto[4] else 0  # VLRETFTE
+                        valor_pagar = float(resultado_auto[8]) if resultado_auto[8] else 0  # TOTAL
+                        
+                        # Ejecutar UPDATE automático
+                        cursor_pg.execute(update_query_auto, (
+                            str(resultado_auto[0]),  # numero_ofimatica
+                            str(resultado_auto[1]),  # password_in
+                            float(resultado_auto[2]) if resultado_auto[2] else 0,  # bruto
+                            float(resultado_auto[3]) if resultado_auto[3] else 0,  # iva_bruto
+                            float(resultado_auto[4]) if resultado_auto[4] else 0,  # vl_retfte
+                            float(resultado_auto[5]) if resultado_auto[5] else 0,  # v_retica
+                            float(resultado_auto[6]) if resultado_auto[6] else 0,  # v_reteniva
+                            float(resultado_auto[7]) if resultado_auto[7] else 0,  # subtotal
+                            float(resultado_auto[8]) if resultado_auto[8] else 0,  # total
+                            clasificacion_final,  # clasificacion_final
+                            abonos,  # abonos
+                            retenciones,  # retenciones
+                            valor_pagar,  # valor_pagar
+                            'Aprobado',  # estado_final
+                            usuario_id,  # usuario_update_final
+                            factura_id   # WHERE id
+                        ))
+                        
+                        conn_pg.commit()
+                        print(f"  ✅ UPDATE AUTOMÁTICO EXITOSO para factura {factura_id}")
+                        
+                        # Marcar como actualizado automáticamente
+                        ofimatica_data[factura_id]["actualizado_auto"] = True
+                        auto_actualizadas += 1
+                        
+                    except Exception as e:
+                        print(f"  ❌ ERROR en UPDATE automático para factura {factura_id}: {e}")
+                        conn_pg.rollback()
+                        errores_actualizacion += 1
+                        ofimatica_data[factura_id]["error_actualizacion"] = str(e)
+                        
                 else:
                     print(f"  ✗ No se encontró coincidencia automática para factura {factura_id}")
                     # Buscar múltiples registros para mostrar opciones
@@ -1740,6 +1813,7 @@ def gestion_final():
                     
                     if resultados_multiple:
                         print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
+                        requieren_manual += 1
                         # Convertir a lista de diccionarios para JSON
                         opciones_list = []
                         for resultado in resultados_multiple:
@@ -1761,12 +1835,15 @@ def gestion_final():
                         }
                     else:
                         print(f"  ✗ No se encontraron registros para factura {factura_id}")
+                        requieren_manual += 1
                         ofimatica_data[factura_id] = {
                             "auto_cargado": False,
                             "sin_registros": True
                         }
+                        
             except Exception as e:
                 print(f"  ⚠ Error en búsqueda automática para factura {factura_id}: {e}")
+                requieren_manual += 1
                 ofimatica_data[factura_id] = {
                     "auto_cargado": False,
                     "error_busqueda": str(e)
@@ -1788,17 +1865,28 @@ def gestion_final():
                 "ofimatica_data": ofimatica_data.get(factura[0], {})
             })
         
-        # Estadísticas de automatización
-        auto_cargadas = sum(1 for data in ofimatica_data.values() if data.get("auto_cargado", False))
+        # Estadísticas finales de automatización
         total_facturas = len(facturas_data)
-        
         print(f"\n📊 ESTADÍSTICAS DE AUTOMATIZACIÓN:")
         print(f"  Total facturas: {total_facturas}")
-        print(f"  Cargadas automáticamente: {auto_cargadas}")
-        print(f"  Porcentaje de éxito: {(auto_cargadas/total_facturas*100):.1f}%" if total_facturas > 0 else "0%")
+        print(f"  ✅ Actualizadas automáticamente: {auto_actualizadas}")
+        print(f"  ⚠ Requieren intervención manual: {requieren_manual}")
+        print(f"  ❌ Errores de actualización: {errores_actualizacion}")
+        if total_facturas > 0:
+            porcentaje_exito = (auto_actualizadas / total_facturas) * 100
+            print(f"  🎯 Porcentaje de éxito: {porcentaje_exito:.1f}%")
+            
+            if porcentaje_exito >= 70:
+                print("  🎉 EXCELENTE - Alta automatización lograda!")
+            elif porcentaje_exito >= 50:
+                print("  👍 BUENO - Automatización moderada")
+            else:
+                print("  ⚠️ MEJORABLE - Baja automatización")
         
-        if auto_cargadas > 0:
-            flash(f"✅ {auto_cargadas} facturas cargadas automáticamente", "success")
+        if auto_actualizadas > 0:
+            flash(f"✅ {auto_actualizadas} facturas actualizadas automáticamente", "success")
+        if errores_actualizacion > 0:
+            flash(f"⚠️ {errores_actualizacion} errores en actualizaciones automáticas", "warning")
 
     except Exception as e:
         print(f"Error general en /gestion_final: {e}")

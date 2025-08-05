@@ -217,6 +217,43 @@
             {% endif %}
         {% endwith %}
 
+        <!-- Panel de estadísticas de automatización -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot"></i> Estadísticas de Automatización
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-success" id="autoActualizadas">0</h3>
+                            <p class="text-muted">Actualizadas Automáticamente</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-warning" id="requierenManual">0</h3>
+                            <p class="text-muted">Requieren Intervención</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-danger" id="erroresActualizacion">0</h3>
+                            <p class="text-muted">Errores de Actualización</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-info" id="porcentajeExito">0%</h3>
+                            <p class="text-muted">Porcentaje de Éxito</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {% if facturas_data %}
         <table class="table table-striped" id="facturasTable">
             <thead>
@@ -228,6 +265,7 @@
                     <th>Fecha</th>
                     <th>Clasificación</th>
                     <th>Pago Servicios</th>
+                    <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -245,6 +283,33 @@
                             {{ factura.hora_aprobacion_pago_servicio }}
                         {% else %}
                             -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if factura.ofimatica_data.actualizado_auto %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check"></i> Actualizada Auto
+                            </span>
+                        {% elif factura.ofimatica_data.auto_cargado %}
+                            <span class="badge bg-info">
+                                <i class="fas fa-robot"></i> Cargada Auto
+                            </span>
+                        {% elif factura.ofimatica_data.opciones_multiple %}
+                            <span class="badge bg-warning">
+                                <i class="fas fa-exclamation-triangle"></i> Múltiples Opciones
+                            </span>
+                        {% elif factura.ofimatica_data.sin_registros %}
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-search"></i> Sin Registros
+                            </span>
+                        {% elif factura.ofimatica_data.error_busqueda %}
+                            <span class="badge bg-danger">
+                                <i class="fas fa-exclamation-circle"></i> Error
+                            </span>
+                        {% else %}
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-clock"></i> Pendiente
+                            </span>
                         {% endif %}
                     </td>
                     <td>
@@ -313,7 +378,13 @@
                                 <input type="number" name="valor_pagar" id="valor_pagar_{{ factura.id }}" placeholder="Valor a Pagar" class="form-control" readonly style="display:none;">
                             </div>
 
-                            <button type="submit" class="btn btn-success" onclick="return confirmarAprobacion();">Actualizar</button>
+                            <button type="submit" class="btn btn-success" onclick="return confirmarAprobacion();">
+                                {% if factura.ofimatica_data.actualizado_auto %}
+                                    <i class="fas fa-check"></i> Ya Actualizada
+                                {% else %}
+                                    Actualizar
+                                {% endif %}
+                            </button>
                         </form>
                     </td>
                 </tr>
@@ -358,6 +429,50 @@
     <script>
         // Datos de automatización desde el servidor
         const ofimaticaData = {{ ofimatica_data | tojson | safe }};
+        
+        // Función para calcular estadísticas
+        function calcularEstadisticas() {
+            let autoActualizadas = 0;
+            let requierenManual = 0;
+            let erroresActualizacion = 0;
+            
+            Object.keys(ofimaticaData).forEach(facturaId => {
+                const data = ofimaticaData[facturaId];
+                
+                if (data.actualizado_auto) {
+                    autoActualizadas++;
+                } else if (data.auto_cargado) {
+                    requierenManual++;
+                } else if (data.opciones_multiple) {
+                    requierenManual++;
+                } else if (data.sin_registros) {
+                    requierenManual++;
+                } else if (data.error_busqueda || data.error_actualizacion) {
+                    erroresActualizacion++;
+                } else {
+                    requierenManual++;
+                }
+            });
+            
+            const total = Object.keys(ofimaticaData).length;
+            const porcentajeExito = total > 0 ? ((autoActualizadas / total) * 100).toFixed(1) : 0;
+            
+            // Actualizar estadísticas en el DOM
+            document.getElementById('autoActualizadas').textContent = autoActualizadas;
+            document.getElementById('requierenManual').textContent = requierenManual;
+            document.getElementById('erroresActualizacion').textContent = erroresActualizacion;
+            document.getElementById('porcentajeExito').textContent = porcentajeExito + '%';
+            
+            // Cambiar color del porcentaje según el éxito
+            const porcentajeElement = document.getElementById('porcentajeExito');
+            if (porcentajeExito >= 70) {
+                porcentajeElement.className = 'text-success';
+            } else if (porcentajeExito >= 50) {
+                porcentajeElement.className = 'text-warning';
+            } else {
+                porcentajeElement.className = 'text-danger';
+            }
+        }
         
         // Función para cargar datos automáticamente
         function cargarDatosAutomaticos() {
@@ -488,9 +603,10 @@
             }
         });
         
-        // Cargar datos automáticamente al cargar la página
+        // Cargar datos automáticamente y calcular estadísticas al cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             cargarDatosAutomaticos();
+            calcularEstadisticas();
         });
       
         document.querySelectorAll('.form-actualizacion').forEach(form => {
