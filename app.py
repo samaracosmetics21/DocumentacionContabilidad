@@ -2205,24 +2205,44 @@ def guardar_documentos():
             print(f'🔄 Procesando: Dcto={dcto}, Factura={factura}')
 
             try:
-                # Realizar el UPDATE en la tabla facturas
-                # Usar factura (que viene de SQL Server) para buscar en PostgreSQL
-                update_query = """
-                    UPDATE facturas
-                    SET dctos = %s, archivo_pdf = %s
-                    WHERE numero_ofimatica = %s
+                # PRIMERO: Verificar si la factura existe por ID
+                # El campo 'factura' de SQL Server corresponde al ID de PostgreSQL
+                check_query = """
+                    SELECT id, numero_ofimatica, numero_factura 
+                    FROM facturas 
+                    WHERE id = %s
                 """
-                print(f"🔧 Ejecutando query: {update_query}")
-                print(f"📝 Parámetros: dcto={dcto}, archivo_path={archivo_path}, factura={factura}")
+                cursor_pg.execute(check_query, (str(factura),))
+                factura_encontrada = cursor_pg.fetchone()
                 
-                cursor_pg.execute(update_query, (dcto, archivo_path, str(factura)))
-                
-                if cursor_pg.rowcount > 0:
-                    actualizados += 1
-                    print(f"✅ Actualizado: factura {factura} con dcto {dcto} - {cursor_pg.rowcount} fila(s) afectada(s)")
+                if factura_encontrada:
+                    print(f"✅ Factura encontrada por ID: ID={factura_encontrada[0]}, numero_ofimatica={factura_encontrada[1]}, numero_factura={factura_encontrada[2]}")
+                    
+                    # Realizar el UPDATE en la tabla facturas usando ID
+                    update_query = """
+                        UPDATE facturas
+                        SET dctos = %s, archivo_pdf = %s
+                        WHERE id = %s
+                    """
+                    print(f"🔧 Ejecutando query: {update_query}")
+                    print(f"📝 Parámetros: dcto={dcto}, archivo_path={archivo_path}, id={factura}")
+                    
+                    cursor_pg.execute(update_query, (dcto, archivo_path, str(factura)))
+                    
+                    if cursor_pg.rowcount > 0:
+                        actualizados += 1
+                        print(f"✅ Actualizado: factura ID {factura} con dcto {dcto} - {cursor_pg.rowcount} fila(s) afectada(s)")
+                    else:
+                        errores += 1
+                        print(f"❌ Error en UPDATE para factura ID {factura}")
                 else:
                     errores += 1
-                    print(f"❌ No se encontró factura con numero_ofimatica: {factura}")
+                    print(f"❌ No se encontró factura con ID: {factura}")
+                    
+                    # Mostrar algunas facturas para debugging
+                    cursor_pg.execute("SELECT id, numero_ofimatica, numero_factura FROM facturas LIMIT 5")
+                    ejemplos = cursor_pg.fetchall()
+                    print(f"📋 Ejemplos de facturas en BD: {ejemplos}")
                     
             except Exception as e:
                 errores += 1
