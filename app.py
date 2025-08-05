@@ -2207,22 +2207,24 @@ def guardar_documentos():
             try:
                 # PRIMERO: Verificar si la factura existe por numero_ofimatica
                 # El campo 'dcto' de SQL Server corresponde al 'numero_ofimatica' de PostgreSQL
+                # Usar LTRIM(RTRIM()) para manejar espacios en blanco
+              
                 check_query = """
                     SELECT id, numero_ofimatica, numero_factura 
                     FROM facturas 
-                    WHERE numero_ofimatica = %s
+                    WHERE LTRIM(RTRIM(numero_ofimatica)) = %s
                 """
                 cursor_pg.execute(check_query, (str(dcto),))  # Usar dcto en lugar de factura
                 factura_encontrada = cursor_pg.fetchone()
                 
                 if factura_encontrada:
-                    print(f"✅ Factura encontrada por numero_ofimatica: ID={factura_encontrada[0]}, numero_ofimatica={factura_encontrada[1]}, numero_factura={factura_encontrada[2]}")
+                    print(f"✅ Factura encontrada por numero_ofimatica: ID={factura_encontrada[0]}, numero_ofimatica='{factura_encontrada[1]}', numero_factura='{factura_encontrada[2]}'")
                     
                     # Realizar el UPDATE en la tabla facturas usando numero_ofimatica
                     update_query = """
                         UPDATE facturas
                         SET dctos = %s, archivo_pdf = %s
-                        WHERE numero_ofimatica = %s
+                        WHERE LTRIM(RTRIM(numero_ofimatica)) = %s
                     """
                     print(f"🔧 Ejecutando query: {update_query}")
                     print(f"📝 Parámetros: dcto={dcto}, archivo_path={archivo_path}, numero_ofimatica={dcto}")
