@@ -2206,15 +2206,14 @@ def guardar_documentos():
 
             try:
                 # PRIMERO: Verificar si la factura existe por numero_ofimatica
-                # El campo 'dcto' de SQL Server corresponde al 'numero_ofimatica' de PostgreSQL
+                # El campo 'factura' de SQL Server corresponde al 'numero_ofimatica' de PostgreSQL
                 # Usar LTRIM(RTRIM()) para manejar espacios en blanco
-              
                 check_query = """
                     SELECT id, numero_ofimatica, numero_factura 
                     FROM facturas 
                     WHERE LTRIM(RTRIM(numero_ofimatica)) = %s
                 """
-                cursor_pg.execute(check_query, (str(dcto),))  # Usar dcto en lugar de factura
+                cursor_pg.execute(check_query, (str(factura),))  # Usar factura en lugar de dcto
                 factura_encontrada = cursor_pg.fetchone()
                 
                 if factura_encontrada:
@@ -2227,19 +2226,19 @@ def guardar_documentos():
                         WHERE LTRIM(RTRIM(numero_ofimatica)) = %s
                     """
                     print(f"🔧 Ejecutando query: {update_query}")
-                    print(f"📝 Parámetros: dcto={dcto}, archivo_path={archivo_path}, numero_ofimatica={dcto}")
+                    print(f"📝 Parámetros: dcto={dcto}, archivo_path={archivo_path}, numero_ofimatica={factura}")
                     
-                    cursor_pg.execute(update_query, (dcto, archivo_path, str(dcto)))
+                    cursor_pg.execute(update_query, (dcto, archivo_path, str(factura)))
                     
                     if cursor_pg.rowcount > 0:
                         actualizados += 1
-                        print(f"✅ Actualizado: factura numero_ofimatica {dcto} con dcto {dcto} - {cursor_pg.rowcount} fila(s) afectada(s)")
+                        print(f"✅ Actualizado: factura numero_ofimatica {factura} con dcto {dcto} - {cursor_pg.rowcount} fila(s) afectada(s)")
                     else:
                         errores += 1
-                        print(f"❌ Error en UPDATE para factura numero_ofimatica {dcto}")
+                        print(f"❌ Error en UPDATE para factura numero_ofimatica {factura}")
                 else:
                     errores += 1
-                    print(f"❌ No se encontró factura con numero_ofimatica: {dcto}")
+                    print(f"❌ No se encontró factura con numero_ofimatica: {factura}")
                     
                     # Mostrar algunas facturas para debugging
                     cursor_pg.execute("SELECT id, numero_ofimatica, numero_factura FROM facturas LIMIT 5")
@@ -2248,7 +2247,7 @@ def guardar_documentos():
                     
             except Exception as e:
                 errores += 1
-                print(f"❌ Error actualizando factura {dcto}: {e}")
+                print(f"❌ Error actualizando factura {factura}: {e}")
 
         # Confirmar los cambios
         conn_pg.commit()
