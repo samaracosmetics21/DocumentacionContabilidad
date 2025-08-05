@@ -2172,54 +2172,87 @@ def tesoreria():
 
 @app.route("/guardar_documentos", methods=["POST"])
 def guardar_documentos():
+    print("🔍 INICIANDO guardar_documentos")
+    print("=" * 50)
+    
     try:
         # Obtener la ruta del archivo y los documentos seleccionados
         archivo_path = request.form.get("archivo_path")
-        print(f'ruta del archivo jesus: {archivo_path}')
-        selected_documents_json = request.form.get("selectedDocuments")  # Obtener los documentos seleccionados (en formato JSON)
+        print(f'📁 Ruta del archivo recibida: {archivo_path}')
+        
+        selected_documents_json = request.form.get("selectedDocuments")
+        print(f'📦 JSON recibido: {selected_documents_json}')
+
+        if not selected_documents_json:
+            print("❌ No se recibieron documentos seleccionados")
+            return jsonify({"success": False, "message": "No se recibieron documentos seleccionados"}), 400
 
         # Deserializar el JSON
-        if selected_documents_json:
-            selected_documents = json.loads(selected_documents_json)
-
-        print(f"Ruta del archivo: {archivo_path}")
-        print(f"Documentos seleccionados: {selected_documents}")
+        selected_documents = json.loads(selected_documents_json)
+        print(f"📋 Documentos deserializados: {selected_documents}")
 
         # Conexión a PostgreSQL
         conn_pg = postgres_connection()
         cursor_pg = conn_pg.cursor()
 
+        actualizados = 0
+        errores = 0
+
         # Iterar sobre los documentos seleccionados
         for doc in selected_documents:
             dcto = doc['dcto']
             factura = doc['factura']
-            print(f'Dcto: {dcto}, Factura: {factura}')
+            print(f'🔄 Procesando: Dcto={dcto}, Factura={factura}')
 
-            # Realizar el UPDATE en la tabla facturas (con los valores correctos de 'dcto' y 'factura')
-            update_query = """
-                UPDATE facturas
-                SET dctos = %s, archivo_pdf = %s
-                WHERE numero_ofimatica = %s
-            """
-            cursor_pg.execute(update_query, (dcto, archivo_path, str(factura)))
+            try:
+                # Realizar el UPDATE en la tabla facturas
+                # Usar factura (que viene de SQL Server) para buscar en PostgreSQL
+                update_query = """
+                    UPDATE facturas
+                    SET dctos = %s, archivo_pdf = %s
+                    WHERE numero_ofimatica = %s
+                """
+                print(f"🔧 Ejecutando query: {update_query}")
+                print(f"📝 Parámetros: dcto={dcto}, archivo_path={archivo_path}, factura={factura}")
+                
+                cursor_pg.execute(update_query, (dcto, archivo_path, str(factura)))
+                
+                if cursor_pg.rowcount > 0:
+                    actualizados += 1
+                    print(f"✅ Actualizado: factura {factura} con dcto {dcto} - {cursor_pg.rowcount} fila(s) afectada(s)")
+                else:
+                    errores += 1
+                    print(f"❌ No se encontró factura con numero_ofimatica: {factura}")
+                    
+            except Exception as e:
+                errores += 1
+                print(f"❌ Error actualizando factura {factura}: {e}")
 
         # Confirmar los cambios
         conn_pg.commit()
+        print(f"💾 Commit realizado")
 
-        flash("Documentos vinculados correctamente a las facturas.", "success")
-        return redirect(url_for("tesoreria"))
+        mensaje = f"✅ {actualizados} documentos vinculados correctamente"
+        if errores > 0:
+            mensaje += f", ❌ {errores} errores"
+
+        print(f"📊 Resultado final: {mensaje}")
+        return jsonify({
+            "success": True, 
+            "message": mensaje,
+            "actualizados": actualizados,
+            "errores": errores
+        })
 
     except Exception as e:
-        flash(f"Ocurrió un error al guardar los documentos: {e}", "error")
-        print(f"Error: {e}")
+        print(f"❌ Error general en guardar_documentos: {e}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
     finally:
         if cursor_pg:
             cursor_pg.close()
         if conn_pg:
             conn_pg.close()
-
-    return render_template("tesoreria.html")
 
 
 @app.route("/facturas_resumen", methods=["GET"])

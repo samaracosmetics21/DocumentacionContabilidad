@@ -265,12 +265,24 @@
         return;
     }
 
+    // DEBUG: Mostrar qué documentos se van a enviar
+    console.log('📋 Documentos seleccionados:', selectedDocuments);
+
     // Serializar los documentos seleccionados a JSON
     var selectedDocumentsSerialized = JSON.stringify(selectedDocuments);
+    console.log('📦 JSON serializado:', selectedDocumentsSerialized);
 
     // Agregar el archivo a los datos del formulario
     var formData = $(this).serializeArray(); // Serializa el formulario
     formData.push({ name: 'selectedDocuments', value: selectedDocumentsSerialized });
+
+    // DEBUG: Mostrar todos los datos que se van a enviar
+    console.log('📤 Datos completos a enviar:', formData);
+
+    // Mostrar indicador de carga
+    var submitButton = $(this).find('button[type="submit"]');
+    var originalText = submitButton.text();
+    submitButton.text('Procesando...').prop('disabled', true);
 
     // Enviar los datos al servidor
     $.ajax({
@@ -278,10 +290,50 @@
         method: 'POST',
         data: formData,
         success: function(response) {
-            alert('Documentos vinculados correctamente.');
+            console.log('✅ Respuesta del servidor:', response);
+            
+            if (response.success) {
+                // Mostrar mensaje de éxito
+                alert(response.message);
+                
+                // Limpiar selecciones
+                $("input[name='dcto']:checked").prop('checked', false);
+                
+                // Ocultar la tabla de documentos
+                $('#documentos-container').hide();
+                $('#num-documentos').hide();
+                
+                // Limpiar el formulario de archivo
+                $('#archivo_pdf').val('');
+                
+                // Mostrar estadísticas si están disponibles
+                if (response.actualizados > 0) {
+                    console.log(`✅ ${response.actualizados} documentos actualizados`);
+                }
+                if (response.errores > 0) {
+                    console.log(`❌ ${response.errores} errores encontrados`);
+                }
+            } else {
+                console.error('❌ Error en respuesta:', response);
+                alert('Error: ' + (response.message || 'Error desconocido'));
+            }
         },
-        error: function(error) {
-            alert('Error al vincular los documentos.');
+        error: function(xhr, status, error) {
+            console.error('❌ Error en la petición:', error);
+            console.error('📄 Respuesta del servidor:', xhr.responseText);
+            console.error('🔗 URL:', $(this).attr('action'));
+            console.error('📊 Status:', status);
+            
+            try {
+                var errorResponse = JSON.parse(xhr.responseText);
+                alert('Error: ' + (errorResponse.message || 'Error al vincular los documentos'));
+            } catch (e) {
+                alert('Error al vincular los documentos. Revisa la consola para más detalles.');
+            }
+        },
+        complete: function() {
+            // Restaurar el botón
+            submitButton.text(originalText).prop('disabled', false);
         }
     });
 });
