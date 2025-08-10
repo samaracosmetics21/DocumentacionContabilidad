@@ -1647,7 +1647,7 @@ def gestion_final():
             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
                 pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp, nombre
             FROM facturas
-            WHERE (pago_servicios = 'Aprobado' OR estado_compras = 'Aprobado') 
+            WHERE (estado_usuario_asignado = 'Aprobado' OR estado_compras = 'Aprobado') 
             AND estado_final = 'Pendiente'
             ORDER BY id
         """
