@@ -572,7 +572,7 @@ def gestion_bodega():
             FROM trade
             WHERE origen = 'COM' 
             AND TIPODCTO = 'OC' 
-            AND TRIM(autorizpor) = 'NCARDONA' OR TRIM(autorizpor) = 'BMONTOYA'
+            AND TRIM(autorizpor) = 'NCARDONA' OR TRIM(autorizpor) = 'BMONTOYA' OR TRIM(autorizpor) = 'MCARDONA' OR TRIM(autorizpor) = 'DESTRADA'
         """)
         ordenes_aprobadas_sql = cursor_sql.fetchall()
 
@@ -584,7 +584,7 @@ def gestion_bodega():
 
         nrodcto_aprobadas = [orden[0].strip() for orden in ordenes_aprobadas_sql]
 
-        # Consultar las órdenes de compra en PostgreSQL que estén pendientes y coincidan con los NRODCTO aprobados en SQL Server
+        # Consultar las órdenes de compra en PostgreSQL que estén pend>CTO aprobados en SQL Server
         print("Consultando órdenes de compra pendientes en PostgreSQL...")
         cursor_pg.execute("""
             SELECT 
