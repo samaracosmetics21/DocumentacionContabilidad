@@ -7,7 +7,6 @@
 {% endblock %}
 
 {% block content %}
-
         <div class="card">
             <div class="card-header">Registro de Facturas</div>
             <div class="card-body form-container">
@@ -113,6 +112,7 @@
         </div>
 {% endblock %}
 
+{% block extra_js %}
     <script>
         function buscarClientes() {
             let nombre = document.getElementById("nombre").value.trim();
@@ -183,111 +183,110 @@
         });
 
         function buscarFacturaPorID() {
-        const id = document.getElementById("buscar_id").value.trim();
-        if (!id) {
-            alert("Ingrese un ID válido");
-            return;
+            const id = document.getElementById("buscar_id").value.trim();
+            if (!id) {
+                alert("Ingrese un ID válido");
+                return;
+            }
+
+            fetch(`/buscar_factura?id=${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        alert("❌ " + data.error);
+                        return;
+                    }
+
+                    document.getElementById("edit_id").value = data.id;
+                    document.getElementById("edit_nit").value = data.nit;
+                    document.getElementById("edit_nombre").value = data.nombre;
+                    document.getElementById("edit_numero_factura").value = data.numero_factura;
+                    document.getElementById("edit_fecha").value = data.fecha_seleccionada;
+                    document.getElementById("edit_clasificacion").value = data.clasificacion;
+                    document.getElementById("edit_observaciones").value = data.observaciones_regis;
+
+                    document.getElementById("formulario-edicion").style.display = "block";
+                })
+                .catch(err => {
+                    alert("Error al buscar la factura");
+                    console.error(err);
+                });
         }
 
-        fetch(`/buscar_factura?id=${id}`)
+        function buscarClientesEdicion() {
+            const nombre = document.getElementById("edit_nombre").value.trim();
+            if (nombre.length < 3) {
+                document.getElementById("sugerencias_edicion").style.display = "none";
+                return;
+            }
+
+            $.ajax({
+                url: '/buscar_cliente',
+                type: 'GET',
+                data: { q: nombre },
+                success: function(response) {
+                    const sugerencias = document.getElementById("sugerencias_edicion");
+                    sugerencias.innerHTML = "";
+                    if (response.length > 0) {
+                        sugerencias.style.display = "block";
+                        response.forEach(cliente => {
+                            const div = document.createElement("div");
+                            div.classList.add("list-group-item");
+                            div.textContent = cliente.nombre.trim();
+                            div.onclick = function() {
+                                document.getElementById("edit_nombre").value = cliente.nombre.trim();
+                                document.getElementById("edit_nit").value = cliente.nit.trim();
+                                sugerencias.style.display = "none";
+                            };
+                            sugerencias.appendChild(div);
+                        });
+                    } else {
+                        sugerencias.style.display = "none";
+                    }
+                },
+                error: function() {
+                    alert("Error al buscar cliente");
+                }
+            });
+        }
+
+        document.getElementById("formulario-edicion").addEventListener("submit", function(e) {
+            e.preventDefault();
+
+            if (!confirm("¿Deseas actualizar esta factura?")) return;
+
+            const formData = new FormData(this);
+
+            const clasificacionValor = this.querySelector("#edit_clasificacion").value;
+            let clasificacionTexto = "";
+
+            if (clasificacionValor === "1") {
+                clasificacionTexto = "Facturas M.P (producción)";
+            } else if (clasificacionValor === "2") {
+                clasificacionTexto = "Facturas Servicios (compras)";
+            } else {
+                clasificacionTexto = clasificacionValor;
+            }
+
+            formData.set("clasificacion", clasificacionTexto);
+
+            fetch("/actualizar_factura", {
+                method: "POST",
+                body: formData
+            })
             .then(res => res.json())
             .then(data => {
-                if (data.error) {
-                    alert("❌ " + data.error);
-                    return;
+                if (data.success) {
+                    alert("✅ Factura actualizada correctamente.");
+                    location.reload();
+                } else {
+                    alert("❌ Error al actualizar:\n" + (data.error || "Error desconocido"));
                 }
-
-                document.getElementById("edit_id").value = data.id;
-                document.getElementById("edit_nit").value = data.nit;
-                document.getElementById("edit_nombre").value = data.nombre;
-                document.getElementById("edit_numero_factura").value = data.numero_factura;
-                document.getElementById("edit_fecha").value = data.fecha_seleccionada;
-                document.getElementById("edit_clasificacion").value = data.clasificacion;
-                document.getElementById("edit_observaciones").value = data.observaciones_regis;
-
-                document.getElementById("formulario-edicion").style.display = "block";
             })
             .catch(err => {
-                alert("Error al buscar la factura");
                 console.error(err);
+                alert("❌ Error inesperado");
             });
-    }
-
-    function buscarClientesEdicion() {
-        const nombre = document.getElementById("edit_nombre").value.trim();
-        if (nombre.length < 3) {
-            document.getElementById("sugerencias_edicion").style.display = "none";
-            return;
-        }
-
-        $.ajax({
-            url: '/buscar_cliente',
-            type: 'GET',
-            data: { q: nombre },
-            success: function(response) {
-                const sugerencias = document.getElementById("sugerencias_edicion");
-                sugerencias.innerHTML = "";
-                if (response.length > 0) {
-                    sugerencias.style.display = "block";
-                    response.forEach(cliente => {
-                        const div = document.createElement("div");
-                        div.classList.add("list-group-item");
-                        div.textContent = cliente.nombre.trim();
-                        div.onclick = function() {
-                            document.getElementById("edit_nombre").value = cliente.nombre.trim();
-                            document.getElementById("edit_nit").value = cliente.nit.trim();
-                            sugerencias.style.display = "none";
-                        };
-                        sugerencias.appendChild(div);
-                    });
-                } else {
-                    sugerencias.style.display = "none";
-                }
-            },
-            error: function() {
-                alert("Error al buscar cliente");
-            }
         });
-    }
-
-    document.getElementById("formulario-edicion").addEventListener("submit", function(e) {
-    e.preventDefault();
-
-    if (!confirm("¿Deseas actualizar esta factura?")) return;
-
-    const formData = new FormData(this);
-
-    const clasificacionValor = this.querySelector("#edit_clasificacion").value;
-    let clasificacionTexto = "";
-
-    if (clasificacionValor === "1") {
-        clasificacionTexto = "Facturas M.P (producción)";
-    } else if (clasificacionValor === "2") {
-        clasificacionTexto = "Facturas Servicios (compras)";
-    } else {
-        clasificacionTexto = clasificacionValor;
-    }
-
-    formData.set("clasificacion", clasificacionTexto);
-
-    fetch("/actualizar_factura", {
-        method: "POST",
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert("✅ Factura actualizada correctamente.");
-            location.reload();
-        } else {
-            alert("❌ Error al actualizar:\n" + (data.error || "Error desconocido"));
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        alert("❌ Error inesperado");
-    });
-});
-
     </script>
 {% endblock %}
