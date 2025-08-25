@@ -69,3 +69,16 @@ CREATE TABLE ordenes_compras (
     usuario_id_oc INT NOT NULL DEFAULT 1
 );
 
+-----query pac actualizar masivo facturas por rango de fecha. desde servicio - aprobacion jefe servcio y lo dejamos en gestion final
+UPDATE facturas
+SET 
+    hora_aprobacion = NOW(),
+    aprobado_servicios = 15,
+    usuario_asignado_servicios = 15,
+    estado = 'Aprobado',
+    pago_servicios = 'Aprobado',
+    hora_aprobacion_pago_servicio = NOW(),
+    estado_usuario_asignado = 'Aprobado',
+    hora_aprobacion_asignado = NOW()
+WHERE fecha_seleccionada >= '2025-06-01'
+  AND fecha_seleccionada <  '2025-07-01';

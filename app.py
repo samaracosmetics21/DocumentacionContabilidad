@@ -23,6 +23,75 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 # Asegurar directorio de carga
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# ============================================================================
+# SISTEMA DE PERMISOS DINÁMICO
+# ============================================================================
+
+def obtener_permisos_usuario(usuario_id):
+    """
+    Obtiene el grupo del usuario basado en su ID
+    Retorna el nombre del grupo o None si no se encuentra
+    """
+    try:
+        conn_pg = postgres_connection()
+        cursor = conn_pg.cursor()
+        
+        cursor.execute("""
+            SELECT g.grupo 
+            FROM usuarios u
+            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+            WHERE u.id = %s
+        """, (usuario_id,))
+        
+        grupo = cursor.fetchone()
+        cursor.close()
+        conn_pg.close()
+        
+        return grupo[0] if grupo else None
+    except Exception as e:
+        print(f"Error obteniendo permisos del usuario {usuario_id}: {e}")
+        return None
+
+# Diccionario de permisos por módulo
+# '*' significa que todos los usuarios pueden acceder
+# Lista vacía [] significa que ningún usuario puede acceder
+PERMISOS_MODULOS = {
+    'grupos': ['Contabilidad'],  # Solo Contabilidad puede gestionar grupos
+    'usuarios': ['Contabilidad'],  # Solo Contabilidad puede gestionar usuarios
+    'gestion_inicial_mp': ['Compras'],  # Solo Compras puede gestionar órdenes de compra
+    'bodega': ['Bodega'],  # Solo Bodega puede aprobar en bodega
+    'compras': ['Compras'],  # Solo Compras puede aprobar en compras
+    'servicios': ['Contabilidad'],  # Solo Contabilidad puede asignar servicios
+    'asignaciones': ['*'],  # Todos los usuarios pueden ver sus asignaciones
+    'pago_servicios': ['jefe_servicios'],  # Solo jefe_servicios puede aprobar pagos de servicios
+    'pago_mp': ['jefe_mp'],  # Solo jefe_mp puede aprobar pagos de MP
+    'gestion_final': ['Contabilidad'],  # Solo Contabilidad puede hacer gestión final
+    'tesoreria': ['Contabilidad', 'jefe_servicios', 'jefe_mp', 'tesoreria'],  # Múltiples grupos pueden acceder
+    'facturas_resumen': ['*'],  # Todos los usuarios pueden ver el resumen
+    'auditor': ['Auditores']  # Solo Auditores pueden acceder
+}
+
+def tiene_permiso(usuario_id, modulo):
+    """
+    Verifica si un usuario tiene permiso para acceder a un módulo específico
+    """
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    if not grupo_usuario:
+        return False
+    
+    permisos_modulo = PERMISOS_MODULOS.get(modulo, [])
+    
+    # Si '*' está en los permisos, todos pueden acceder
+    if '*' in permisos_modulo:
+        return True
+    
+    # Si el grupo del usuario está en los permisos del módulo
+    return grupo_usuario in permisos_modulo
+
+# ============================================================================
+# FIN SISTEMA DE PERMISOS DINÁMICO
+# ============================================================================
+
 def login_required(f):
     @wraps(f)
     def wrapped(*args, **kwargs):
@@ -83,6 +152,10 @@ def buscar_cliente():
 @app.route("/", methods=["GET", "POST"])
 @login_required
 def index():
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
     if request.method == "POST":
         try:
             # Procesar datos del formulario
@@ -153,7 +226,9 @@ def index():
             print("Error durante el POST:", e)
             return jsonify(success=False, message=str(e)), 500
 
-    return render_template("index.html")
+    return render_template("index.html", 
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 
@@ -291,32 +366,22 @@ def actualizar_factura():
 @app.route("/grupos", methods=["GET", "POST"])
 @login_required
 def gestion_grupos():
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'grupos'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
+    
     if request.method == "POST":
         grupo = request.form.get("grupo")
         descripcion = request.form.get("descripcion")
-        usuario_id = session.get("user_id")  # Obtener el ID del usuario desde la sesión
 
         try:
             conn_pg = postgres_connection()
             cursor = conn_pg.cursor()
-
-            # Validar si el usuario pertenece al grupo de Contabilidad
-            print("Validando grupo del usuario...")
-            query_validar_grupo = """
-                SELECT g.grupo 
-                FROM usuarios u
-                INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-                WHERE u.id = %s AND g.grupo = 'Contabilidad'
-            """
-            cursor.execute(query_validar_grupo, (usuario_id,))
-            grupo_usuario = cursor.fetchone()
-
-            print("Grupo obtenido:", grupo_usuario)
-
-            if not grupo_usuario:
-                flash("No tienes permisos para gestionar grupos.", "error")
-                print("Error: usuario no pertenece al grupo de Contabilidad.")
-                return redirect("/grupos")
 
             # Insertar el nuevo grupo en la base de datos
             cursor.execute("INSERT INTO grupo_aprobacion (grupo, descripcion) VALUES (%s, %s)", (grupo, descripcion))
@@ -330,13 +395,24 @@ def gestion_grupos():
             if conn_pg:
                 conn_pg.close()
 
-    return render_template("grupos.html")
+    return render_template("grupos.html", 
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 # Gestión de Usuarios
 @app.route("/usuarios", methods=["GET", "POST"])
 @login_required
 def gestion_usuarios():
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'usuarios'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
+    
     # Establecer la conexión a PostgreSQL
     conn_pg = None
     cursor = None
@@ -356,28 +432,9 @@ def gestion_usuarios():
             correo = request.form.get("correo")
             grupo_id = request.form.get("grupo_aprobacion")
             password = request.form.get("password")
-            usuario_id = session.get("user_id")  # Obtener el ID del usuario desde la sesión
 
             print("Datos recibidos del formulario:")
             print(f"Nombre: {nombre}, Apellido: {apellido}, Usuario: {usuario}, Correo: {correo}, Grupo ID: {grupo_id}")
-
-            # Validar si el usuario pertenece al grupo de Contabilidad
-            print("Validando grupo del usuario...")
-            query_validar_grupo = """
-                SELECT g.grupo 
-                FROM usuarios u
-                INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-                WHERE u.id = %s AND g.grupo = 'Contabilidad'
-            """
-            cursor.execute(query_validar_grupo, (usuario_id,))
-            grupo_usuario = cursor.fetchone()
-
-            print("Grupo obtenido:", grupo_usuario)
-
-            if not grupo_usuario:
-                flash("No tienes permisos para gestionar usuarios.", "error")
-                print("Error: usuario no pertenece al grupo de Contabilidad.")
-                return redirect("/usuarios")
 
             try:
                 # Encriptar la contraseña
@@ -427,13 +484,25 @@ def gestion_usuarios():
 
     print("Renderizando la plantilla 'usuarios.html'.")
     # Renderizar la plantilla con los grupos
-    return render_template("usuarios.html", grupos=grupos)
+    return render_template("usuarios.html", 
+                         grupos=grupos,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 
 @app.route("/bodega", methods=["GET", "POST"])
 @login_required
 def gestion_bodega():
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'bodega'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
+    
     conn_pg = postgres_connection()  # Conexión a PostgreSQL
     conn_sql = sql_server_connection()  # Conexión a SQL Server
     cursor_pg = conn_pg.cursor()
@@ -580,7 +649,12 @@ def gestion_bodega():
 
         if not ordenes_aprobadas_sql:
             print("No se encontraron órdenes aprobadas en SQL Server.")
-            return render_template("bodega.html", ordenes_compras=[], facturas_pendientes={}, referencias={})
+            return render_template("bodega.html", 
+                                 ordenes_compras=[], 
+                                 facturas_pendientes={}, 
+                                 referencias={},
+                                 grupo_usuario=grupo_usuario,
+                                 permisos_modulos=PERMISOS_MODULOS)
 
         nrodcto_aprobadas = [orden[0].strip() for orden in ordenes_aprobadas_sql]
 
@@ -674,7 +748,9 @@ def gestion_bodega():
         "bodega.html", 
         ordenes_compras=ordenes_compras, 
         facturas_pendientes=facturas_pendientes, 
-        referencias=referencias_dict
+        referencias=referencias_dict,
+        grupo_usuario=grupo_usuario,
+        permisos_modulos=PERMISOS_MODULOS
     )
 
 
@@ -685,6 +761,15 @@ def gestion_bodega():
 @app.route("/compras", methods=["GET", "POST"])
 @login_required
 def gestion_compras():
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'compras'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
+    
     # Conexión a la base de datos PostgreSQL
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
@@ -815,7 +900,10 @@ def gestion_compras():
             print("Conexión cerrada")
 
     # Renderizar el HTML
-    return render_template("compras.html", facturas=facturas)
+    return render_template("compras.html", 
+                         facturas=facturas,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 
@@ -848,6 +936,15 @@ def login():
 @app.route("/servicios", methods=["GET", "POST"])
 @login_required
 def gestion_servicios():
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'servicios'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
+    
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
 
@@ -947,7 +1044,11 @@ def gestion_servicios():
         if conn_pg:
             conn_pg.close()
 
-    return render_template("servicios.html", facturas=facturas, usuarios=usuarios)
+    return render_template("servicios.html", 
+                         facturas=facturas, 
+                         usuarios=usuarios,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 @app.route("/asignaciones", methods=["GET", "POST"])
@@ -955,11 +1056,20 @@ def gestion_servicios():
 def gestion_asignaciones():
     print("Iniciando gestión de asignaciones...")
 
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'asignaciones'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
+
     conn_pg = postgres_connection()
     print("Conexión a la base de datos establecida.")
     cursor = conn_pg.cursor()
 
-    # Obtener el ID del usuario autenticado desde la sesións
+    # Obtener el ID del usuario autenticado desde la sesión
     usuario_actual_id = session.get("user_id")
     print(f"Usuario autenticado: {usuario_actual_id}")
 
@@ -1051,42 +1161,32 @@ def gestion_asignaciones():
             print("Conexión a la base de datos cerrada.")
 
     print("Renderizando la plantilla asignaciones.html...")
-    return render_template("asignaciones.html", facturas=facturas_asignadas)
+    return render_template("asignaciones.html", 
+                         facturas=facturas_asignadas,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 @app.route("/pago_servicios", methods=["GET", "POST"])
+@login_required
 def pago_servicios():
     print("Iniciando vista de pago de servicios...")
+
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'pago_servicios'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
 
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
 
-    # Obtener el ID del usuario autenticado desde la sesión
-    usuario_id = session.get("user_id")
     print(f"Usuario autenticado: {usuario_id}")
 
-    if not usuario_id:
-        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
-        print("Error: sesión no válida o usuario no autenticado.")
-        return redirect(url_for("login"))
-
     try:
-        # Validar si el usuario pertenece al grupo de jefe_servicios
-        print("Validando grupo del usuario...")
-        cursor.execute("""
-            SELECT g.grupo 
-            FROM usuarios u 
-            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-            WHERE u.id = %s AND g.grupo = 'jefe_servicios'
-        """, (usuario_id,))
-        grupo = cursor.fetchone()
-        print(f"Resultado de validación de grupo: {grupo}")
-
-        if not grupo:
-            flash("No tienes permisos para acceder a esta funcionalidad.", "error")
-            print("Error: usuario no pertenece al grupo jefe_servicios.")
-            return redirect("/")
-
         if request.method == "POST":
             print("Método POST recibido.")
             
@@ -1171,41 +1271,32 @@ def pago_servicios():
             print("Conexión a la base de datos cerrada.")
 
     print("Renderizando la plantilla pago_servicios.html...")
-    return render_template("pago_servicios.html", facturas=facturas_aprobadas)
+    return render_template("pago_servicios.html", 
+                         facturas=facturas_aprobadas,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 #-------------Pago MP
 @app.route("/pago_mp", methods=["GET", "POST"])
+@login_required
 def pago_mp():
     print("Iniciando vista de pago de MP...")
+
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'pago_mp'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
 
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
 
-    # Obtener el ID del usuario autenticado desde la sesión
-    usuario_id = session.get("user_id")
     print(f"Usuario autenticado: {usuario_id}")
 
-    if not usuario_id:
-        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
-        print("Error: sesión no válida o usuario no autenticado.")
-        return redirect(url_for("login"))
-
     try:
-        # Validar si el usuario pertenece al grupo de jefe_servicios
-        print("Validando grupo del usuario...")
-        cursor.execute("""
-            SELECT g.grupo 
-            FROM usuarios u 
-            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-            WHERE u.id = %s AND g.grupo = 'jefe_mp'
-        """, (usuario_id,))
-        grupo = cursor.fetchone()
-        print(f"Resultado de validación de grupo: {grupo}")
-
-        if not grupo:
-            flash("No tienes permisos para acceder a esta funcionalidad.", "error")
-            print("Error: usuario no pertenece al grupo jefe_mp.")
-            return redirect("/")
 
         if request.method == "POST":
             print("Método POST recibido.")
@@ -1289,7 +1380,10 @@ def pago_mp():
             print("Conexión a la base de datos cerrada.")
 
     print("Renderizando la plantilla pago_mp.html...")
-    return render_template("pago_mp.html", facturas=facturas_aprobadas)
+    return render_template("pago_mp.html", 
+                         facturas=facturas_aprobadas,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 # FUNCIÓN ORIGINAL COMENTADA - VERSIÓN MANUAL
@@ -1547,17 +1641,20 @@ def pago_mp():
 
 # NUEVA FUNCIÓN AUTOMATIZADA
 @app.route("/gestion_final", methods=["GET", "POST"])
+@login_required
 def gestion_final():
     print("Iniciando vista de gestión final AUTOMATIZADA...")
 
-    # Obtener el ID del usuario autenticado desde la sesión
+    # Obtener permisos del usuario para el menú dinámico
     usuario_id = session.get("user_id")
-    print(f"Usuario autenticado: {usuario_id}")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'gestion_final'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
 
-    if not usuario_id:
-        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
-        print("Error: sesión no válida o usuario no autenticado.")
-        return redirect(url_for("login"))
+    print(f"Usuario autenticado: {usuario_id}")
 
     # Conexión a PostgreSQL
     conn_pg = postgres_connection()
@@ -1905,7 +2002,11 @@ def gestion_final():
             conn_sql.close()
 
     print("Renderizando la plantilla gestion_final.html...")
-    return render_template("gestion_final.html", facturas_data=facturas_data, ofimatica_data=ofimatica_data)
+    return render_template("gestion_final.html", 
+                         facturas_data=facturas_data, 
+                         ofimatica_data=ofimatica_data,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 # Ruta para buscar datos de la base de datos
@@ -2047,36 +2148,14 @@ def tesoreria():
         flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
         return redirect(url_for("login"))
 
-    # Validar si el usuario pertenece al grupo de Contabilidad o Jefe_MP
-    try:
-        conn_pg = postgres_connection()
-        cursor = conn_pg.cursor()
-
-        print("Validando grupo del usuario...")
-        query_validar_grupo = """
-            SELECT g.grupo 
-            FROM usuarios u
-            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
-            WHERE u.id = %s AND (g.grupo = 'Contabilidad' OR g.grupo = 'jefe_servicios' or g.grupo = 'jefe_mp' or g.grupo = 'tesoreria')
-        """
-        cursor.execute(query_validar_grupo, (usuario_id,))
-        grupo_usuario = cursor.fetchone()
-
-        print("Grupo obtenido:", grupo_usuario)
-
-        if not grupo_usuario:
-            flash("No tienes permisos para acceder a Tesorería.", "error")
-            print("Error: usuario no pertenece al grupo de Contabilidad o Jefe_MP.")
-            return redirect("/")
-
-    except Exception as e:
-        flash(f"Error al validar el grupo del usuario: {e}", "error")
-        print(f"Error al validar el grupo del usuario: {e}")
-    finally:
-        if cursor:
-            cursor.close()
-        if conn_pg:
-            conn_pg.close()
+    # Obtener permisos del usuario para el menú dinámico
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'tesoreria'):
+        flash("No tienes permisos para acceder a Tesorería.", "error")
+        print("Error: usuario no tiene permisos para Tesorería.")
+        return redirect("/")
 
     if request.method == "POST":
         archivo_pdf = request.files.get("archivo_pdf")
@@ -2084,7 +2163,9 @@ def tesoreria():
         # Validar si se ha subido un archivo PDF
         if not archivo_pdf:
             flash("Por favor, sube un archivo PDF.", "error")
-            return render_template("tesoreria.html")
+            return render_template("tesoreria.html", 
+                                 grupo_usuario=grupo_usuario,
+                                 permisos_modulos=PERMISOS_MODULOS)
 
         print(f"Archivo recibido: {archivo_pdf.filename}")
 
@@ -2129,7 +2210,9 @@ def tesoreria():
             # Si no se encontraron documentos, mostrar mensaje
             if not documentos:
                 flash("No se encontraron documentos en los últimos 30 días.", "error")
-                return render_template("tesoreria.html")
+                return render_template("tesoreria.html", 
+                                     grupo_usuario=grupo_usuario,
+                                     permisos_modulos=PERMISOS_MODULOS)
 
             print(f"Documentos encontrados: {len(documentos)}")
 
@@ -2167,7 +2250,9 @@ def tesoreria():
             if conn_sql_server:
                 conn_sql_server.close()
 
-    return render_template("tesoreria.html")
+    return render_template("tesoreria.html", 
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 @app.route("/guardar_documentos", methods=["POST"])
@@ -2279,6 +2364,15 @@ def guardar_documentos():
 @app.route("/facturas_resumen", methods=["GET"])
 @login_required
 def facturas_servicios():
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'facturas_resumen'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
+    
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
 
@@ -2335,7 +2429,10 @@ def facturas_servicios():
         if conn_pg:
             conn_pg.close()
 
-    return render_template("facturas_servicios.html", facturas=facturas)
+    return render_template("facturas_servicios.html", 
+                         facturas=facturas,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 @app.route('/buscar_orden', methods=['GET'])
@@ -2376,33 +2473,16 @@ def buscar_orden():
 
 
 @app.route("/gestion_inicial_mp", methods=["GET", "POST"]) 
+@login_required
 def gestion_inicial():
-    # Verificar si el usuario está logueado y pertenece al grupo "Compras"
+    # Obtener permisos del usuario para el menú dinámico
     usuario_id = session.get("user_id")
-    if not usuario_id:
-        flash("Tu sesión ha expirado o no has iniciado sesión.", "error")
-        return redirect(url_for("login"))
-
-    try:
-        # Conectar a la base de datos PostgreSQL para validar el grupo
-        conn_pg = postgres_connection()
-        cursor_pg = conn_pg.cursor()
-
-        cursor_pg.execute("""
-            SELECT g.grupo
-            FROM usuarios u
-            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id
-            WHERE u.id = %s AND g.grupo = 'Compras'
-        """, (usuario_id,))
-        grupo = cursor_pg.fetchone()
-
-        if not grupo:
-            flash("No tienes permisos para acceder a esta funcionalidad. Debes ser parte del grupo 'Compras'.", "error")
-            return redirect("/")
-
-    except Exception as e:
-        flash(f"Error al verificar el grupo del usuario: {str(e)}", "error")
-        return redirect(request.url)
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'gestion_inicial_mp'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
 
     if request.method == "POST":
         # Procesar los datos del formulario y eliminar espacios de las variables
@@ -2522,7 +2602,10 @@ def gestion_inicial():
     cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
     ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
 
-    return render_template("gestion_inicial.html", ordenes=ordenes)
+    return render_template("gestion_inicial.html", 
+                         ordenes=ordenes,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 @app.route("/get_orden")
 @login_required
@@ -2618,6 +2701,15 @@ def aprobar_factura(id_factura):
 @app.route("/auditor", methods=["GET"])
 @login_required
 def auditor():
+    # Obtener permisos del usuario para el menú dinámico
+    usuario_id = session.get("user_id")
+    grupo_usuario = obtener_permisos_usuario(usuario_id)
+    
+    # Verificar si el usuario tiene permiso para acceder a este módulo
+    if not tiene_permiso(usuario_id, 'auditor'):
+        flash("No tienes permisos para acceder a este módulo.", "error")
+        return redirect("/")
+    
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
 
@@ -2638,7 +2730,10 @@ def auditor():
         if conn_pg:
             conn_pg.close()
 
-    return render_template("auditor.html", facturas=facturas)
+    return render_template("auditor.html", 
+                         facturas=facturas,
+                         grupo_usuario=grupo_usuario,
+                         permisos_modulos=PERMISOS_MODULOS)
 
 
 
