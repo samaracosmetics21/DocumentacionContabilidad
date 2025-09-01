@@ -2731,7 +2731,8 @@ def auditor():
 
     try:
         cursor.execute("""
-            select id, numero_ofimatica, nit, nombre, numero_factura, fecha_seleccionada, nrodcto_oc, archivo_path
+            select id, numero_ofimatica, nit, nombre, numero_factura, fecha_seleccionada, nrodcto_oc, archivo_path,
+                   bruto, iva_bruto, vl_retfte, v_retica, v_reteniva, subtotal, total
 	        from facturas where aproba_auditor='Pendiente' 
         """)
         facturas = cursor.fetchall()

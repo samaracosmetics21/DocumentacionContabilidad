@@ -94,6 +94,30 @@
             margin-bottom: 15px;
         }
 
+        /* Estilos para campos monetarios */
+        .monetary-cell {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        .monetary-cell.zero {
+            color: #6c757d;
+            font-weight: normal;
+        }
+
+        /* Hacer la tabla más compacta para acomodar más columnas */
+        .table th, .table td {
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Scroll horizontal para la tabla */
+        .table-container {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
 
     </style>
 </head>
@@ -151,9 +175,15 @@
                                     <th>Factura Proveedor</th>
                                     <th>Fecha</th>
                                     <th>Nro Documento</th>
+                                    <th>Bruto</th>
+                                    <th>IVA Bruto</th>
+                                    <th>Ret. Fuente</th>
+                                    <th>Ret. ICA</th>
+                                    <th>Ret. IVA</th>
+                                    <th>Subtotal</th>
+                                    <th>Total</th>
                                     <th>Archivo</th>
                                     <th>Acción</th>
-                                    
                                 </tr>
                             </thead>
                             <tbody>
@@ -165,6 +195,13 @@
                                     <td>{{ factura[4] }}</td>
                                     <td>{{ factura[5] }}</td>
                                     <td>{{ factura[6] }}</td>
+                                    <td>{{ factura[8] or 0 }}</td>
+                                    <td>{{ factura[9] or 0 }}</td>
+                                    <td>{{ factura[10] or 0 }}</td>
+                                    <td>{{ factura[11] or 0 }}</td>
+                                    <td>{{ factura[12] or 0 }}</td>
+                                    <td>{{ factura[13] or 0 }}</td>
+                                    <td>{{ factura[14] or 0 }}</td>
                                     <td>
                                         {% if factura[7] %}
                                         <a href="{{ url_for('static', filename= 'uploads/' + factura[7].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Archivo</a>
@@ -197,6 +234,24 @@
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
 
     <script>
+        // Función para formatear números como moneda
+        function formatCurrency(value) {
+            if (!value || isNaN(value)) return '$0.00';
+            return new Intl.NumberFormat('es-CO', {
+                style: 'currency',
+                currency: 'COP',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+        
+        // Función para limpiar formato de moneda y obtener solo el número
+        function unformatCurrency(value) {
+            if (!value) return '0';
+            // Remover símbolo de moneda, comas y espacios
+            return value.replace(/[^\d.-]/g, '');
+        }
+        
         $(document).ready(function () {
             // Inicializar DataTable
             var table = $('#facturasTable').DataTable({
@@ -216,6 +271,17 @@
                     className: 'btn btn-success',
                     exportOptions: {
                         columns: ':visible' // Exporta solo columnas visibles
+                    }
+                }
+            ],
+            columnDefs: [
+                {
+                    targets: [6, 7, 8, 9, 10, 11, 12], // Columnas monetarias (Bruto, IVA, Retenciones, etc.)
+                    render: function(data, type, row) {
+                        if (type === 'display') {
+                            return formatCurrency(data);
+                        }
+                        return data; // Para ordenamiento y búsqueda, mantener el valor original
                     }
                 }
             ]

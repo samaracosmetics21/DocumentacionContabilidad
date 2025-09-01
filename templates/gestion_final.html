@@ -430,6 +430,53 @@
         // Datos de automatización desde el servidor
         const ofimaticaData = {{ ofimatica_data | tojson | safe }};
         
+        // Función para formatear números como moneda
+        function formatCurrency(value) {
+            if (!value || isNaN(value)) return '$0.00';
+            return new Intl.NumberFormat('es-CO', {
+                style: 'currency',
+                currency: 'COP',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+        
+        // Función para limpiar formato de moneda y obtener solo el número
+        function unformatCurrency(value) {
+            if (!value) return '0';
+            // Remover símbolo de moneda, comas y espacios
+            return value.replace(/[^\d.-]/g, '');
+        }
+        
+        // Función para aplicar formato de moneda a un campo
+        function applyCurrencyFormat(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                const value = field.value;
+                const numericValue = unformatCurrency(value);
+                if (numericValue !== '0' && numericValue !== '') {
+                    field.value = formatCurrency(numericValue);
+                }
+            }
+        }
+        
+        // Función para aplicar formato a todos los campos monetarios
+        function applyCurrencyFormatToAllFields() {
+            const monetaryFields = [
+                'bruto', 'iva_bruto', 'vl_retfte', 'v_retica', 'v_reteniva', 
+                'subtotal', 'total', 'abonos', 'retenciones', 'valor_pagar'
+            ];
+            
+            monetaryFields.forEach(fieldName => {
+                const fields = document.querySelectorAll(`[id^="${fieldName}_"]`);
+                fields.forEach(field => {
+                    if (field.value && field.value !== '0' && field.value !== '0.00') {
+                        field.value = formatCurrency(field.value);
+                    }
+                });
+            });
+        }
+        
         // Función para calcular estadísticas
         function calcularEstadisticas() {
             let autoActualizadas = 0;
@@ -483,13 +530,13 @@
                     // Cargar datos automáticamente
                     document.getElementById(`numero_ofimatica_${facturaId}`).value = data.numero_ofimatica;
                     document.getElementById(`password_in_${facturaId}`).value = data.passwordin;
-                    document.getElementById(`bruto_${facturaId}`).value = data.bruto;
-                    document.getElementById(`iva_bruto_${facturaId}`).value = data.ivabruto;
-                    document.getElementById(`vl_retfte_${facturaId}`).value = data.vlretfte;
-                    document.getElementById(`v_retica_${facturaId}`).value = data.vretica;
-                    document.getElementById(`v_reteniva_${facturaId}`).value = data.vreteniva;
-                    document.getElementById(`subtotal_${facturaId}`).value = data.subtotal;
-                    document.getElementById(`total_${facturaId}`).value = data.total;
+                    document.getElementById(`bruto_${facturaId}`).value = formatCurrency(data.bruto);
+                    document.getElementById(`iva_bruto_${facturaId}`).value = formatCurrency(data.ivabruto);
+                    document.getElementById(`vl_retfte_${facturaId}`).value = formatCurrency(data.vlretfte);
+                    document.getElementById(`v_retica_${facturaId}`).value = formatCurrency(data.vretica);
+                    document.getElementById(`v_reteniva_${facturaId}`).value = formatCurrency(data.vreteniva);
+                    document.getElementById(`subtotal_${facturaId}`).value = formatCurrency(data.subtotal);
+                    document.getElementById(`total_${facturaId}`).value = formatCurrency(data.total);
                     
                     // Marcar campos como cargados automáticamente
                     const campos = [
@@ -569,13 +616,13 @@
                 // Cargar datos de la opción seleccionada
                 document.getElementById(`numero_ofimatica_${facturaId}`).value = opcion.nrodcto;
                 document.getElementById(`password_in_${facturaId}`).value = opcion.passwordin;
-                document.getElementById(`bruto_${facturaId}`).value = opcion.bruto;
-                document.getElementById(`iva_bruto_${facturaId}`).value = opcion.ivabruto;
-                document.getElementById(`vl_retfte_${facturaId}`).value = opcion.vlretfte;
-                document.getElementById(`v_retica_${facturaId}`).value = opcion.vretica;
-                document.getElementById(`v_reteniva_${facturaId}`).value = opcion.vreteniva;
-                document.getElementById(`subtotal_${facturaId}`).value = opcion.subtotal;
-                document.getElementById(`total_${facturaId}`).value = opcion.total;
+                document.getElementById(`bruto_${facturaId}`).value = formatCurrency(opcion.bruto);
+                document.getElementById(`iva_bruto_${facturaId}`).value = formatCurrency(opcion.ivabruto);
+                document.getElementById(`vl_retfte_${facturaId}`).value = formatCurrency(opcion.vlretfte);
+                document.getElementById(`v_retica_${facturaId}`).value = formatCurrency(opcion.vretica);
+                document.getElementById(`v_reteniva_${facturaId}`).value = formatCurrency(opcion.vreteniva);
+                document.getElementById(`subtotal_${facturaId}`).value = formatCurrency(opcion.subtotal);
+                document.getElementById(`total_${facturaId}`).value = formatCurrency(opcion.total);
                 
                 // Marcar como seleccionado manualmente
                 const campos = [
@@ -607,6 +654,24 @@
         document.addEventListener('DOMContentLoaded', function() {
             cargarDatosAutomaticos();
             calcularEstadisticas();
+            applyCurrencyFormatToAllFields();
+            
+            // Agregar eventos para formatear campos monetarios al perder el foco
+            const monetaryFields = [
+                'bruto', 'iva_bruto', 'vl_retfte', 'v_retica', 'v_reteniva', 
+                'subtotal', 'total', 'abonos', 'retenciones', 'valor_pagar'
+            ];
+            
+            monetaryFields.forEach(fieldName => {
+                const fields = document.querySelectorAll(`[id^="${fieldName}_"]`);
+                fields.forEach(field => {
+                    field.addEventListener('blur', function() {
+                        if (this.value && this.value !== '0' && this.value !== '0.00') {
+                            this.value = formatCurrency(this.value);
+                        }
+                    });
+                });
+            });
         });
       
         document.querySelectorAll('.form-actualizacion').forEach(form => {
@@ -624,8 +689,12 @@
 
                 camposNumericos.forEach(campo => {
                     const valor = formData.get(campo);
-                    if (!valor || isNaN(valor)) {
+                    // Limpiar formato de moneda antes de enviar
+                    const valorLimpio = unformatCurrency(valor);
+                    if (!valorLimpio || isNaN(valorLimpio)) {
                         formData.set(campo, "0");
+                    } else {
+                        formData.set(campo, valorLimpio);
                     }
                 });
 
@@ -692,14 +761,14 @@
 
             // Asigna los campos directamente, sin hacer fetch adicional
             document.getElementById("password_in_" + facturaId).value = selectedData.passwordin;
-            document.getElementById("bruto_" + facturaId).value = selectedData.bruto;
+            document.getElementById("bruto_" + facturaId).value = formatCurrency(selectedData.bruto);
             // Puedes llenar otros campos si los traes desde backend también
-            document.getElementById("iva_bruto_" + facturaId).value = selectedData.ivabruto;
-            document.getElementById("vl_retfte_" + facturaId).value = selectedData.vlretfte;
-            document.getElementById("v_retica_" + facturaId).value = selectedData.vretica;
-            document.getElementById("v_reteniva_" + facturaId).value = selectedData.vreteniva;
-            document.getElementById("subtotal_" + facturaId).value = selectedData.subtotal;
-            document.getElementById("total_" + facturaId).value = selectedData.total;
+            document.getElementById("iva_bruto_" + facturaId).value = formatCurrency(selectedData.ivabruto);
+            document.getElementById("vl_retfte_" + facturaId).value = formatCurrency(selectedData.vlretfte);
+            document.getElementById("v_retica_" + facturaId).value = formatCurrency(selectedData.vretica);
+            document.getElementById("v_reteniva_" + facturaId).value = formatCurrency(selectedData.vreteniva);
+            document.getElementById("subtotal_" + facturaId).value = formatCurrency(selectedData.subtotal);
+            document.getElementById("total_" + facturaId).value = formatCurrency(selectedData.total);
             document.getElementById("abonos_" + facturaId).value = selectedData.abonos;
             document.getElementById("retenciones_" + facturaId).value = selectedData.retenciones;
             document.getElementById("valor_pagar_" + facturaId).value = selectedData.valor_pagar;
@@ -736,13 +805,13 @@ function buscarOfimatica(facturaId, numeroOfimatica) {
             if (data) {
                 document.getElementById("numero_ofimatica_" + facturaId).value = data.nro_dcto || '';
                 document.getElementById("password_in_" + facturaId).value = data.passwordin || '';
-                document.getElementById("bruto_" + facturaId).value = data.bruto || '';
-                document.getElementById("iva_bruto_" + facturaId).value = data.ivabruto || '';
-                document.getElementById("vl_retfte_" + facturaId).value = data.vlretfte || '';
-                document.getElementById("v_retica_" + facturaId).value = data.vretica || '';
-                document.getElementById("v_reteniva_" + facturaId).value = data.vreteniva || '';
-                document.getElementById("subtotal_" + facturaId).value = data.subtotal || '';
-                document.getElementById("total_" + facturaId).value = data.total || '';
+                document.getElementById("bruto_" + facturaId).value = formatCurrency(data.bruto || '');
+                document.getElementById("iva_bruto_" + facturaId).value = formatCurrency(data.ivabruto || '');
+                document.getElementById("vl_retfte_" + facturaId).value = formatCurrency(data.vlretfte || '');
+                document.getElementById("v_retica_" + facturaId).value = formatCurrency(data.vretica || '');
+                document.getElementById("v_reteniva_" + facturaId).value = formatCurrency(data.vreteniva || '');
+                document.getElementById("subtotal_" + facturaId).value = formatCurrency(data.subtotal || '');
+                document.getElementById("total_" + facturaId).value = formatCurrency(data.total || '');
                 document.getElementById("abonos_" + facturaId).value = data.abonos || '';
                 document.getElementById("retenciones_" + facturaId).value = data.retenciones || '';
                 document.getElementById("valor_pagar_" + facturaId).value = data.valor_pagar || '';
