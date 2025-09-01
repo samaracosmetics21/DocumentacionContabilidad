@@ -2484,6 +2484,10 @@ def gestion_inicial():
         flash("No tienes permisos para acceder a este módulo.", "error")
         return redirect("/")
 
+    # Inicializar conexiones fuera del bloque POST para que estén disponibles en toda la función
+    conn_pg = postgres_connection()
+    cursor_pg = conn_pg.cursor()
+
     if request.method == "POST":
         # Procesar los datos del formulario y eliminar espacios de las variables
         nrodcto_oc = request.form.get("nrodcto", "").strip() or "Valor por defecto"
@@ -2598,9 +2602,21 @@ def gestion_inicial():
         except Exception as e:
             flash(f"Error al guardar en PostgreSQL: {str(e)}", "error")
             return redirect(request.url)
-        
-    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
-    ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
+    
+    try:
+        # Consultar las órdenes de compra para mostrar en la plantilla
+        cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
+        ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
+    except Exception as e:
+        print(f"Error consultando órdenes de compra: {e}")
+        flash(f"Error al consultar las órdenes de compra: {str(e)}", "error")
+        ordenes = []
+    finally:
+        # Cerrar conexiones
+        if cursor_pg:
+            cursor_pg.close()
+        if conn_pg:
+            conn_pg.close()
 
     return render_template("gestion_inicial.html", 
                          ordenes=ordenes,
