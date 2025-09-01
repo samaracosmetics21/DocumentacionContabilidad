@@ -1681,6 +1681,31 @@ def gestion_final():
         print(f"Factura ID: {factura_id}, Numero Ofimatica: {numero_ofimatica}")
 
         try:
+            # Validar y convertir campos numéricos antes de enviar a la base de datos
+            def convertir_campo_numerico(valor):
+                if not valor or valor == '' or valor == 'None':
+                    return None
+                try:
+                    valor_float = float(valor)
+                    # Si el valor es 0, también retornar None para campos opcionales
+                    if valor_float == 0:
+                        return None
+                    return valor_float
+                except (ValueError, TypeError):
+                    return None
+            
+            # Convertir campos numéricos
+            bruto_conv = convertir_campo_numerico(bruto)
+            iva_bruto_conv = convertir_campo_numerico(iva_bruto)
+            vl_retfte_conv = convertir_campo_numerico(vl_retfte)
+            v_retica_conv = convertir_campo_numerico(v_retica)
+            v_reteniva_conv = convertir_campo_numerico(v_reteniva)
+            subtotal_conv = convertir_campo_numerico(subtotal)
+            total_conv = convertir_campo_numerico(total)
+            abonos_conv = convertir_campo_numerico(abonos)
+            retenciones_conv = convertir_campo_numerico(retenciones)
+            valor_pagar_conv = convertir_campo_numerico(valor_pagar)
+            
             # Definir la consulta SQL para la actualización de la factura
             update_query = """
                 UPDATE facturas
@@ -1703,9 +1728,9 @@ def gestion_final():
                 WHERE id = %s
             """
 
-            # Ejecutar la consulta SQL con los valores recibidos desde el formulario
+            # Ejecutar la consulta SQL con los valores convertidos
             cursor_pg.execute(update_query, (
-                numero_ofimatica, password_in, bruto, iva_bruto, vl_retfte, v_retica, v_reteniva, subtotal, total, clasificacion_final, abonos, retenciones, valor_pagar, estado_final, usuario_id, factura_id
+                numero_ofimatica, password_in, bruto_conv, iva_bruto_conv, vl_retfte_conv, v_retica_conv, v_reteniva_conv, subtotal_conv, total_conv, clasificacion_final, abonos_conv, retenciones_conv, valor_pagar_conv, estado_final, usuario_id, factura_id
             ))
 
             # Confirmar los cambios en la base de datos
@@ -1848,9 +1873,9 @@ def gestion_final():
                         clasificacion_final = 'FR' if tipodcto == 'FR' else 'FS'
                         
                         # Calcular valores adicionales
-                        abonos = 0  # Valor por defecto
-                        retenciones = float(resultado_auto[4]) if resultado_auto[4] else 0  # VLRETFTE
-                        valor_pagar = float(resultado_auto[8]) if resultado_auto[8] else 0  # TOTAL
+                        abonos = None  # NULL en lugar de 0 para campos vacíos
+                        retenciones = float(resultado_auto[4]) if resultado_auto[4] else None  # VLRETFTE
+                        valor_pagar = float(resultado_auto[8]) if resultado_auto[8] else None  # TOTAL
                         
                         # Ejecutar UPDATE automático
                         cursor_pg.execute(update_query_auto, (
