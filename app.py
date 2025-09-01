@@ -1798,30 +1798,93 @@ def gestion_final():
             clasificacion = factura[4]
             
             # Determinar tipo de documento
-            if clasificacion == 'Facturas':
-                tipodcto = 'FR'
-            elif clasificacion == 'Servicios':
-                tipodcto = 'FS'
-            else:
+            def determinar_tipo_documento(clasificacion):
+                mapeo_tipos = {
+                    'Facturas': 'FR',
+                    'Servicios': 'FS',
+                    'Facturas Genericas': 'FG',
+                    'Notas Credito': 'DP',
+                    'Documento Soporte': 'DN',
+                    'Caja Menor': 'CM'
+                }
+                return mapeo_tipos.get(clasificacion, 'FS')  # Default a FS si no se encuentra
+            
+            tipodcto = determinar_tipo_documento(clasificacion)
+            if not tipodcto:
+                print(f"  ⚠ Clasificación no válida para la factura {factura_id}: {clasificacion}")
                 continue
             
-            print(f"Buscando automáticamente: NIT={nit}, Factura='{numero_factura}', Tipo={tipodcto}")
+            print(f"Buscando automáticamente: NIT={nit}, Factura='{numero_factura}', Tipo={tipodcto} ({clasificacion})")
+            
+            # Generar consulta adaptativa según el tipo de documento
+            def generar_consulta_sql(tipodcto):
+                if tipodcto in ['FR', 'FS', 'FG']:
+                    # Documentos con estructura completa (facturas)
+                    return """
+                        SELECT 
+                            NRODCTO, 
+                            PASSWORDIN, 
+                            BRUTO, 
+                            IVABRUTO, 
+                            VLRETFTE, 
+                            VRETICA, 
+                            VRETENIVA, 
+                            (BRUTO + COALESCE(IVABRUTO, 0)) AS SUBTOTAL, 
+                            ((BRUTO + COALESCE(IVABRUTO, 0)) - COALESCE(VLRETFTE, 0) - COALESCE(VRETICA, 0) - COALESCE(VRETENIVA, 0)) AS TOTAL
+                        FROM TRADE
+                        WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                    """
+                elif tipodcto in ['DP', 'DN']:
+                    # Notas crédito y documentos soporte (estructura intermedia)
+                    return """
+                        SELECT 
+                            NRODCTO, 
+                            PASSWORDIN, 
+                            BRUTO, 
+                            COALESCE(IVABRUTO, 0) AS IVABRUTO, 
+                            COALESCE(VLRETFTE, 0) AS VLRETFTE, 
+                            COALESCE(VRETICA, 0) AS VRETICA, 
+                            COALESCE(VRETENIVA, 0) AS VRETENIVA, 
+                            BRUTO AS SUBTOTAL, 
+                            (BRUTO - COALESCE(VLRETFTE, 0) - COALESCE(VRETICA, 0) - COALESCE(VRETENIVA, 0)) AS TOTAL
+                        FROM TRADE
+                        WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                    """
+                elif tipodcto == 'CM':
+                    # Caja menor (estructura simplificada)
+                    return """
+                        SELECT 
+                            NRODCTO, 
+                            PASSWORDIN, 
+                            BRUTO, 
+                            0 AS IVABRUTO, 
+                            0 AS VLRETFTE, 
+                            0 AS VRETICA, 
+                            0 AS VRETENIVA, 
+                            BRUTO AS SUBTOTAL, 
+                            BRUTO AS TOTAL
+                        FROM TRADE
+                        WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                    """
+                else:
+                    # Default a la consulta original
+                    return """
+                        SELECT 
+                            NRODCTO, 
+                            PASSWORDIN, 
+                            BRUTO, 
+                            IVABRUTO, 
+                            VLRETFTE, 
+                            VRETICA, 
+                            VRETENIVA, 
+                            (BRUTO + IVABRUTO) AS SUBTOTAL, 
+                            ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+                        FROM TRADE
+                        WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                    """
             
             # Búsqueda automática en SQL Server usando dctoprv
-            query_auto = """
-                SELECT 
-                    NRODCTO, 
-                    PASSWORDIN, 
-                    BRUTO, 
-                    IVABRUTO, 
-                    VLRETFTE, 
-                    VRETICA, 
-                    VRETENIVA, 
-                    (BRUTO + IVABRUTO) AS SUBTOTAL, 
-                    ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
-                FROM TRADE
-                WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
-            """
+            query_auto = generar_consulta_sql(tipodcto)
             
             try:
                 cursor_sql.execute(query_auto, (numero_factura, nit, tipodcto))
@@ -1870,12 +1933,32 @@ def gestion_final():
                         """
                         
                         # Determinar clasificación final basada en el tipo de documento
-                        clasificacion_final = 'FR' if tipodcto == 'FR' else 'FS'
+                        def determinar_clasificacion_final(tipodcto):
+                            mapeo_clasificacion = {
+                                'FR': 'FR',
+                                'FS': 'FS', 
+                                'FG': 'FG',
+                                'DP': 'DP',
+                                'DN': 'DN',
+                                'CM': 'CM'
+                            }
+                            return mapeo_clasificacion.get(tipodcto, 'FS')
                         
-                        # Calcular valores adicionales
+                        clasificacion_final = determinar_clasificacion_final(tipodcto)
+                        
+                        # Calcular valores adicionales con manejo robusto de nulos
+                        def convertir_valor_seguro(valor, default=None):
+                            if valor is None or valor == '':
+                                return default
+                            try:
+                                valor_float = float(valor)
+                                return valor_float if valor_float != 0 else default
+                            except (ValueError, TypeError):
+                                return default
+                        
                         abonos = None  # NULL en lugar de 0 para campos vacíos
-                        retenciones = float(resultado_auto[4]) if resultado_auto[4] else None  # VLRETFTE
-                        valor_pagar = float(resultado_auto[8]) if resultado_auto[8] else None  # TOTAL
+                        retenciones = convertir_valor_seguro(resultado_auto[4])  # VLRETFTE
+                        valor_pagar = convertir_valor_seguro(resultado_auto[8])  # TOTAL
                         
                         # Ejecutar UPDATE automático
                         cursor_pg.execute(update_query_auto, (
@@ -1912,23 +1995,11 @@ def gestion_final():
                         
                 else:
                     print(f"  ✗ No se encontró coincidencia automática para factura {factura_id}")
-                    # Buscar múltiples registros para mostrar opciones
-                    query_multiple = """
-                        SELECT TOP 5
-                            NRODCTO, 
-                            PASSWORDIN, 
-                            BRUTO, 
-                            IVABRUTO, 
-                            VLRETFTE, 
-                            VRETICA, 
-                            VRETENIVA, 
-                            (BRUTO + IVABRUTO) AS SUBTOTAL, 
-                            ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL,
-                            LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
-                        FROM TRADE
-                        WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
-                        ORDER BY NRODCTO
-                    """
+                    # Buscar múltiples registros para mostrar opciones (consulta adaptativa)
+                    query_multiple = generar_consulta_sql(tipodcto).replace(
+                        "WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'",
+                        "WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'"
+                    ) + ", LTRIM(RTRIM(dctoprv)) as dctoprv_limpio ORDER BY NRODCTO"
                     
                     cursor_sql.execute(query_multiple, (nit, tipodcto))
                     resultados_multiple = cursor_sql.fetchall()
