@@ -1829,8 +1829,8 @@ def gestion_final():
                             VLRETFTE, 
                             VRETICA, 
                             VRETENIVA, 
-                            (BRUTO + COALESCE(IVABRUTO, 0)) AS SUBTOTAL, 
-                            ((BRUTO + COALESCE(IVABRUTO, 0)) - COALESCE(VLRETFTE, 0) - COALESCE(VRETICA, 0) - COALESCE(VRETENIVA, 0)) AS TOTAL
+                            (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
+                            ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL
                         FROM TRADE
                         WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
                     """
@@ -1841,12 +1841,12 @@ def gestion_final():
                             NRODCTO, 
                             PASSWORDIN, 
                             BRUTO, 
-                            COALESCE(IVABRUTO, 0) AS IVABRUTO, 
-                            COALESCE(VLRETFTE, 0) AS VLRETFTE, 
-                            COALESCE(VRETICA, 0) AS VRETICA, 
-                            COALESCE(VRETENIVA, 0) AS VRETENIVA, 
+                            ISNULL(IVABRUTO, 0) AS IVABRUTO, 
+                            ISNULL(VLRETFTE, 0) AS VLRETFTE, 
+                            ISNULL(VRETICA, 0) AS VRETICA, 
+                            ISNULL(VRETENIVA, 0) AS VRETENIVA, 
                             BRUTO AS SUBTOTAL, 
-                            (BRUTO - COALESCE(VLRETFTE, 0) - COALESCE(VRETICA, 0) - COALESCE(VRETENIVA, 0)) AS TOTAL
+                            (BRUTO - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL
                         FROM TRADE
                         WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
                     """
@@ -1877,8 +1877,8 @@ def gestion_final():
                             VLRETFTE, 
                             VRETICA, 
                             VRETENIVA, 
-                            (BRUTO + IVABRUTO) AS SUBTOTAL, 
-                            ((BRUTO + IVABRUTO) - VLRETFTE - VRETICA - VRETENIVA) AS TOTAL
+                            (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
+                            ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL
                         FROM TRADE
                         WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
                     """
@@ -2001,37 +2001,45 @@ def gestion_final():
                         "WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'"
                     ) + ", LTRIM(RTRIM(dctoprv)) as dctoprv_limpio ORDER BY NRODCTO"
                     
-                    cursor_sql.execute(query_multiple, (nit, tipodcto))
-                    resultados_multiple = cursor_sql.fetchall()
-                    
-                    if resultados_multiple:
-                        print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
-                        requieren_manual += 1
-                        # Convertir a lista de diccionarios para JSON
-                        opciones_list = []
-                        for resultado in resultados_multiple:
-                            opciones_list.append({
-                                "nrodcto": str(resultado[0]),
-                                "passwordin": str(resultado[1]),
-                                "bruto": float(resultado[2]) if resultado[2] else 0,
-                                "ivabruto": float(resultado[3]) if resultado[3] else 0,
-                                "vlretfte": float(resultado[4]) if resultado[4] else 0,
-                                "vretica": float(resultado[5]) if resultado[5] else 0,
-                                "vreteniva": float(resultado[6]) if resultado[6] else 0,
-                                "subtotal": float(resultado[7]) if resultado[7] else 0,
-                                "total": float(resultado[8]) if resultado[8] else 0,
-                                "dctoprv": str(resultado[9]) if resultado[9] else ""
-                            })
-                        ofimatica_data[factura_id] = {
-                            "opciones_multiple": opciones_list,
-                            "auto_cargado": False
-                        }
-                    else:
-                        print(f"  ✗ No se encontraron registros para factura {factura_id}")
+                    try:
+                        cursor_sql.execute(query_multiple, (nit, tipodcto))
+                        resultados_multiple = cursor_sql.fetchall()
+                        
+                        if resultados_multiple:
+                            print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
+                            requieren_manual += 1
+                            # Convertir a lista de diccionarios para JSON
+                            opciones_list = []
+                            for resultado in resultados_multiple:
+                                opciones_list.append({
+                                    "nrodcto": str(resultado[0]),
+                                    "passwordin": str(resultado[1]),
+                                    "bruto": float(resultado[2]) if resultado[2] else 0,
+                                    "ivabruto": float(resultado[3]) if resultado[3] else 0,
+                                    "vlretfte": float(resultado[4]) if resultado[4] else 0,
+                                    "vretica": float(resultado[5]) if resultado[5] else 0,
+                                    "vreteniva": float(resultado[6]) if resultado[6] else 0,
+                                    "subtotal": float(resultado[7]) if resultado[7] else 0,
+                                    "total": float(resultado[8]) if resultado[8] else 0,
+                                    "dctoprv": str(resultado[9]) if resultado[9] else ""
+                                })
+                            ofimatica_data[factura_id] = {
+                                "opciones_multiple": opciones_list,
+                                "auto_cargado": False
+                            }
+                        else:
+                            print(f"  ✗ No se encontraron registros para factura {factura_id}")
+                            requieren_manual += 1
+                            ofimatica_data[factura_id] = {
+                                "auto_cargado": False,
+                                "sin_registros": True
+                            }
+                    except Exception as e:
+                        print(f"  ⚠ Error en búsqueda de opciones múltiples para factura {factura_id}: {e}")
                         requieren_manual += 1
                         ofimatica_data[factura_id] = {
                             "auto_cargado": False,
-                            "sin_registros": True
+                            "error_opciones": str(e)
                         }
                         
             except Exception as e:
