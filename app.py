@@ -1996,10 +1996,77 @@ def gestion_final():
                 else:
                     print(f"  ✗ No se encontró coincidencia automática para factura {factura_id}")
                     # Buscar múltiples registros para mostrar opciones (consulta adaptativa)
-                    query_multiple = generar_consulta_sql(tipodcto).replace(
-                        "WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'",
-                        "WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'"
-                    ) + ", LTRIM(RTRIM(dctoprv)) as dctoprv_limpio ORDER BY NRODCTO"
+                    def generar_consulta_multiple(tipodcto):
+                        if tipodcto in ['FR', 'FS', 'FG']:
+                            return """
+                                SELECT TOP 5
+                                    NRODCTO, 
+                                    PASSWORDIN, 
+                                    BRUTO, 
+                                    IVABRUTO, 
+                                    VLRETFTE, 
+                                    VRETICA, 
+                                    VRETENIVA, 
+                                    (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
+                                    ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL,
+                                    LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
+                                FROM TRADE
+                                WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                                ORDER BY NRODCTO
+                            """
+                        elif tipodcto in ['DP', 'DN']:
+                            return """
+                                SELECT TOP 5
+                                    NRODCTO, 
+                                    PASSWORDIN, 
+                                    BRUTO, 
+                                    ISNULL(IVABRUTO, 0) AS IVABRUTO, 
+                                    ISNULL(VLRETFTE, 0) AS VLRETFTE, 
+                                    ISNULL(VRETICA, 0) AS VRETICA, 
+                                    ISNULL(VRETENIVA, 0) AS VRETENIVA, 
+                                    BRUTO AS SUBTOTAL, 
+                                    (BRUTO - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL,
+                                    LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
+                                FROM TRADE
+                                WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                                ORDER BY NRODCTO
+                            """
+                        elif tipodcto == 'CM':
+                            return """
+                                SELECT TOP 5
+                                    NRODCTO, 
+                                    PASSWORDIN, 
+                                    BRUTO, 
+                                    0 AS IVABRUTO, 
+                                    0 AS VLRETFTE, 
+                                    0 AS VRETICA, 
+                                    0 AS VRETENIVA, 
+                                    BRUTO AS SUBTOTAL, 
+                                    BRUTO AS TOTAL,
+                                    LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
+                                FROM TRADE
+                                WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                                ORDER BY NRODCTO
+                            """
+                        else:
+                            return """
+                                SELECT TOP 5
+                                    NRODCTO, 
+                                    PASSWORDIN, 
+                                    BRUTO, 
+                                    IVABRUTO, 
+                                    VLRETFTE, 
+                                    VRETICA, 
+                                    VRETENIVA, 
+                                    (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
+                                    ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL,
+                                    LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
+                                FROM TRADE
+                                WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                                ORDER BY NRODCTO
+                            """
+                    
+                    query_multiple = generar_consulta_multiple(tipodcto)
                     
                     try:
                         cursor_sql.execute(query_multiple, (nit, tipodcto))
