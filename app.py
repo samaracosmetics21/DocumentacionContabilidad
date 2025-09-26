@@ -1142,7 +1142,13 @@ def gestion_asignaciones():
             SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_usuario_asignado, estado_usuario_asignado, hora_aprobacion_asignado, nombre
             FROM facturas
             WHERE usuario_asignado_servicios = %s
-            ORDER BY fecha_seleccionada ASC
+            ORDER BY 
+                CASE 
+                    WHEN estado_usuario_asignado = 'Pendiente' THEN 1 
+                    WHEN estado_usuario_asignado = 'Aprobado' THEN 2 
+                    ELSE 3 
+                END,
+                fecha_seleccionada ASC
         """, (usuario_actual_id,))
         facturas_asignadas = cursor.fetchall()
         print(f"Facturas asignadas obtenidas: {facturas_asignadas}")
