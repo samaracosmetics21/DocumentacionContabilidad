@@ -165,14 +165,14 @@ def enviar_correo_asignacion(destinatario_email, destinatario_nombre, factura_da
                     
                     <h3>🎯 Próximos Pasos</h3>
                     <ol>
-                        <li>Inicia sesión en el sistema</li>
+                        <li>Inicia sesión en el sistema: <a href="http://10.1.200.11:2837/">http://10.1.200.11:2837/</a></li>
                         <li>Ve a la sección "Mis Asignaciones"</li>
                         <li>Revisa la factura asignada</li>
                         <li>Aprueba o rechaza según corresponda</li>
                     </ol>
                     
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="#" class="action-button">🔗 Ir a Mis Asignaciones</a>
+                        <a href="http://10.1.200.11:2837/asignaciones" class="action-button">🔗 Ir a Mis Asignaciones</a>
                     </div>
                 </div>
                 
@@ -204,8 +204,8 @@ def enviar_correo_asignacion(destinatario_email, destinatario_nombre, factura_da
         Fecha de Asignación: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
         
         Próximos pasos:
-        1. Inicia sesión en el sistema
-        2. Ve a "Mis Asignaciones"
+        1. Inicia sesión en el sistema: http://10.1.200.11:2837/
+        2. Ve a "Mis Asignaciones": http://10.1.200.11:2837/asignaciones
         3. Revisa y aprueba la factura
         
         Sistema de Gestión Documental
