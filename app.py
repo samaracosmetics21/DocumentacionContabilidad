@@ -12,6 +12,7 @@ from pyodbc import Error
 from flask import jsonify
 import decimal
 import json
+from email_config import enviar_correo_asignacion
 
 
 app = Flask(__name__)
@@ -1008,7 +1009,63 @@ def gestion_servicios():
                 """, (hora_aprobacion, usuario_id, usuario_asignado, factura_id))
                 conn_pg.commit()
                 print("Factura actualizada exitosamente en la base de datos.")
-                flash("Factura asignada y aprobada exitosamente", "success")
+                
+                # ENVIAR CORREO DE NOTIFICACIÓN
+                try:
+                    # Obtener datos del usuario asignado
+                    cursor.execute("""
+                        SELECT nombre, apellido, correo 
+                        FROM usuarios 
+                        WHERE id = %s
+                    """, (usuario_asignado,))
+                    usuario_asignado_data = cursor.fetchone()
+                    
+                    # Obtener datos del usuario que asignó
+                    cursor.execute("""
+                        SELECT nombre, apellido 
+                        FROM usuarios 
+                        WHERE id = %s
+                    """, (usuario_id,))
+                    usuario_asignador_data = cursor.fetchone()
+                    
+                    # Obtener datos completos de la factura
+                    cursor.execute("""
+                        SELECT id, nit, nombre, numero_factura, fecha_seleccionada, clasificacion
+                        FROM facturas 
+                        WHERE id = %s
+                    """, (factura_id,))
+                    factura_data = cursor.fetchone()
+                    
+                    if usuario_asignado_data and usuario_asignador_data and factura_data:
+                        # Preparar datos para el correo
+                        destinatario_email = usuario_asignado_data[2]  # correo
+                        destinatario_nombre = f"{usuario_asignado_data[0]} {usuario_asignado_data[1]}"
+                        usuario_asignador_nombre = f"{usuario_asignador_data[0]} {usuario_asignador_data[1]}"
+                        
+                        factura_info = {
+                            'id': factura_data[0],
+                            'nit': factura_data[1],
+                            'nombre': factura_data[2],
+                            'numero_factura': factura_data[3],
+                            'fecha_seleccionada': factura_data[4].strftime('%d/%m/%Y') if factura_data[4] else 'N/A',
+                            'clasificacion': factura_data[5]
+                        }
+                        
+                        # Enviar correo
+                        if enviar_correo_asignacion(destinatario_email, destinatario_nombre, factura_info, usuario_asignador_nombre):
+                            print(f"✅ Correo de notificación enviado a {destinatario_email}")
+                            flash("Factura asignada y notificación enviada por correo", "success")
+                        else:
+                            print(f"⚠️ Error enviando correo a {destinatario_email}")
+                            flash("Factura asignada, pero hubo un problema enviando la notificación por correo", "warning")
+                    else:
+                        print("⚠️ No se pudieron obtener todos los datos para el correo")
+                        flash("Factura asignada exitosamente", "success")
+                        
+                except Exception as email_error:
+                    print(f"⚠️ Error en el proceso de envío de correo: {email_error}")
+                    flash("Factura asignada exitosamente", "success")
+                
             except Exception as e:
                 conn_pg.rollback()
                 print("Error durante la actualización de la factura:", e)
