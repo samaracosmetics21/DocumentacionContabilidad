@@ -408,7 +408,111 @@
                     eliminarUsuario(usuarioId, usuarioNombre);
                 });
             });
+            
+            // Validación en tiempo real para usuario y correo
+            const usuarioInput = document.getElementById('usuario');
+            const correoInput = document.getElementById('correo');
+            
+            if (usuarioInput) {
+                usuarioInput.addEventListener('blur', function() {
+                    verificarDisponibilidad();
+                });
+            }
+            
+            if (correoInput) {
+                correoInput.addEventListener('blur', function() {
+                    verificarDisponibilidad();
+                });
+            }
         });
+
+        function verificarDisponibilidad() {
+            const usuario = document.getElementById('usuario').value.trim();
+            const correo = document.getElementById('correo').value.trim();
+            
+            if (!usuario && !correo) {
+                return;
+            }
+            
+            // Mostrar indicador de carga
+            const usuarioInput = document.getElementById('usuario');
+            const correoInput = document.getElementById('correo');
+            
+            // Crear o actualizar indicadores
+            let usuarioIndicator = document.getElementById('usuario-indicator');
+            let correoIndicator = document.getElementById('correo-indicator');
+            
+            if (!usuarioIndicator) {
+                usuarioIndicator = document.createElement('div');
+                usuarioIndicator.id = 'usuario-indicator';
+                usuarioIndicator.className = 'form-text';
+                usuarioInput.parentNode.appendChild(usuarioIndicator);
+            }
+            
+            if (!correoIndicator) {
+                correoIndicator = document.createElement('div');
+                correoIndicator.id = 'correo-indicator';
+                correoIndicator.className = 'form-text';
+                correoInput.parentNode.appendChild(correoIndicator);
+            }
+            
+            // Mostrar carga
+            usuarioIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+            correoIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+            
+            fetch('/verificar_usuario', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    usuario: usuario,
+                    correo: correo
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Respuesta de verificación:', data);
+                
+                // Actualizar indicadores
+                if (usuario) {
+                    if (data.usuario_existe) {
+                        usuarioIndicator.innerHTML = '<i class="fas fa-times text-danger"></i> Este nombre de usuario ya existe';
+                        usuarioIndicator.className = 'form-text text-danger';
+                    } else {
+                        usuarioIndicator.innerHTML = '<i class="fas fa-check text-success"></i> Nombre de usuario disponible';
+                        usuarioIndicator.className = 'form-text text-success';
+                    }
+                }
+                
+                if (correo) {
+                    if (data.correo_existe) {
+                        correoIndicator.innerHTML = '<i class="fas fa-times text-danger"></i> Este correo ya está registrado';
+                        correoIndicator.className = 'form-text text-danger';
+                    } else {
+                        correoIndicator.innerHTML = '<i class="fas fa-check text-success"></i> Correo disponible';
+                        correoIndicator.className = 'form-text text-success';
+                    }
+                }
+                
+                // Deshabilitar botón si hay conflictos
+                const submitButton = document.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    if (data.usuario_existe || data.correo_existe) {
+                        submitButton.disabled = true;
+                        submitButton.title = 'Corrige los errores antes de continuar';
+                    } else {
+                        submitButton.disabled = false;
+                        submitButton.title = '';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando disponibilidad:', error);
+                usuarioIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Error verificando disponibilidad';
+                correoIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Error verificando disponibilidad';
+            });
+        }
 
         function confirmarAprobacion() {
             if (confirm("¿Estás seguro de crear este usuario? Esta acción no se puede deshacer.")) {

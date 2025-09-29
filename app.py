@@ -508,6 +508,28 @@ def gestion_usuarios():
             print(f"Nombre: {nombre}, Apellido: {apellido}, Usuario: {usuario}, Correo: {correo}, Grupo ID: {grupo_id}")
 
             try:
+                # VALIDAR SI EL USUARIO YA EXISTE
+                print("Validando si el usuario ya existe...")
+                cursor.execute("SELECT id FROM usuarios WHERE usuario = %s", (usuario,))
+                usuario_existente = cursor.fetchone()
+                
+                if usuario_existente:
+                    print(f"❌ Error: El usuario '{usuario}' ya existe en la base de datos")
+                    flash(f"Error: El usuario '{usuario}' ya existe. Por favor, elige otro nombre de usuario.", "error")
+                    return redirect("/usuarios")
+                
+                # VALIDAR SI EL CORREO YA EXISTE
+                print("Validando si el correo ya existe...")
+                cursor.execute("SELECT id FROM usuarios WHERE correo = %s", (correo,))
+                correo_existente = cursor.fetchone()
+                
+                if correo_existente:
+                    print(f"❌ Error: El correo '{correo}' ya existe en la base de datos")
+                    flash(f"Error: El correo '{correo}' ya está registrado. Por favor, usa otro correo.", "error")
+                    return redirect("/usuarios")
+                
+                print("✅ Validaciones pasadas: usuario y correo únicos")
+                
                 # Encriptar la contraseña
                 print("Encriptando la contraseña...")
                 password_hash = generate_password_hash(password)
@@ -577,6 +599,48 @@ def gestion_usuarios():
                          usuarios_existentes=usuarios_existentes,
                          grupo_usuario=grupo_usuario,
                          permisos_modulos=PERMISOS_MODULOS)
+
+
+# Verificar si un usuario ya existe
+@app.route("/verificar_usuario", methods=["POST"])
+@login_required
+def verificar_usuario():
+    """
+    Verifica si un nombre de usuario o correo ya existe
+    """
+    try:
+        data = request.get_json()
+        usuario = data.get('usuario', '').strip()
+        correo = data.get('correo', '').strip()
+        
+        conn_pg = postgres_connection()
+        cursor = conn_pg.cursor()
+        
+        # Verificar usuario
+        usuario_existe = False
+        if usuario:
+            cursor.execute("SELECT id FROM usuarios WHERE usuario = %s", (usuario,))
+            usuario_existe = cursor.fetchone() is not None
+        
+        # Verificar correo
+        correo_existe = False
+        if correo:
+            cursor.execute("SELECT id FROM usuarios WHERE correo = %s", (correo,))
+            correo_existe = cursor.fetchone() is not None
+        
+        return jsonify({
+            'usuario_existe': usuario_existe,
+            'correo_existe': correo_existe,
+            'disponible': not usuario_existe and not correo_existe
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn_pg:
+            conn_pg.close()
 
 
 # Obtener datos de un usuario específico para edición
