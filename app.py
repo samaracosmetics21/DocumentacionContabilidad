@@ -57,8 +57,8 @@ def obtener_permisos_usuario(usuario_id):
 # '*' significa que todos los usuarios pueden acceder
 # Lista vacía [] significa que ningún usuario puede acceder
 PERMISOS_MODULOS = {
-    'grupos': ['Contabilidad'],  # Solo Contabilidad puede gestionar grupos
-    'usuarios': ['Contabilidad'],  # Solo Contabilidad puede gestionar usuarios
+    'grupos': ['Contabilidad', 'Sistemas'],  # Contabilidad y Sistemas pueden gestionar grupos
+    'usuarios': ['Contabilidad', 'Sistemas'],  # Contabilidad y Sistemas pueden gestionar usuarios
     'gestion_inicial_mp': ['Compras'],  # Solo Compras puede gestionar órdenes de compra
     'bodega': ['Bodega'],  # Solo Bodega puede aprobar en bodega
     'compras': ['Compras'],  # Solo Compras puede aprobar en compras
@@ -469,10 +469,27 @@ def gestion_usuarios():
             flash(f"Error consultando grupos: {str(e)}", "error")
             grupos = []
 
+        # Consultar usuarios existentes
+        try:
+            print("Consultando usuarios existentes...")
+            cursor.execute("""
+                SELECT u.id, u.nombre, u.apellido, u.usuario, u.correo, g.grupo
+                FROM usuarios u
+                INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id
+                ORDER BY u.nombre, u.apellido
+            """)
+            usuarios_existentes = cursor.fetchall()
+            print(f"Usuarios obtenidos: {len(usuarios_existentes)}")
+        except Exception as e:
+            print(f"Error al consultar usuarios: {e}")
+            flash(f"Error consultando usuarios: {str(e)}", "error")
+            usuarios_existentes = []
+
     except Exception as e:
         print(f"Error conectando a la base de datos: {e}")
         flash(f"Error conectando a la base de datos: {str(e)}", "error")
         grupos = []
+        usuarios_existentes = []
 
     finally:
         # Cerrar la conexión y el cursor para evitar problemas de recursos
@@ -487,8 +504,179 @@ def gestion_usuarios():
     # Renderizar la plantilla con los grupos
     return render_template("usuarios.html", 
                          grupos=grupos,
+                         usuarios_existentes=usuarios_existentes,
                          grupo_usuario=grupo_usuario,
                          permisos_modulos=PERMISOS_MODULOS)
+
+
+# Obtener datos de un usuario específico para edición
+@app.route("/obtener_usuario/<int:usuario_id>", methods=["GET"])
+@login_required
+def obtener_usuario(usuario_id):
+    # Verificar permisos
+    usuario_actual_id = session.get("user_id")
+    if not tiene_permiso(usuario_actual_id, 'usuarios'):
+        return jsonify({"error": "No tienes permisos para acceder a esta funcionalidad"}), 403
+    
+    try:
+        conn_pg = postgres_connection()
+        cursor = conn_pg.cursor()
+        
+        cursor.execute("""
+            SELECT u.id, u.nombre, u.apellido, u.usuario, u.correo, u.grupo_aprobacion_id, g.grupo
+            FROM usuarios u
+            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id
+            WHERE u.id = %s
+        """, (usuario_id,))
+        
+        usuario = cursor.fetchone()
+        
+        if usuario:
+            return jsonify({
+                "id": usuario[0],
+                "nombre": usuario[1],
+                "apellido": usuario[2],
+                "usuario": usuario[3],
+                "correo": usuario[4],
+                "grupo_aprobacion_id": usuario[5],
+                "grupo": usuario[6]
+            })
+        else:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn_pg:
+            conn_pg.close()
+
+
+# Actualizar usuario
+@app.route("/actualizar_usuario", methods=["POST"])
+@login_required
+def actualizar_usuario():
+    # Verificar permisos
+    usuario_actual_id = session.get("user_id")
+    if not tiene_permiso(usuario_actual_id, 'usuarios'):
+        return jsonify({"error": "No tienes permisos para acceder a esta funcionalidad"}), 403
+    
+    try:
+        # Obtener datos del formulario
+        usuario_id = request.form.get("usuario_id")
+        nombre = request.form.get("nombre")
+        apellido = request.form.get("apellido")
+        usuario = request.form.get("usuario")
+        correo = request.form.get("correo")
+        grupo_id = request.form.get("grupo_aprobacion")
+        password = request.form.get("password")
+        
+        if not usuario_id or not usuario_id.isdigit():
+            return jsonify({"error": "ID de usuario no válido"}), 400
+        
+        conn_pg = postgres_connection()
+        cursor = conn_pg.cursor()
+        
+        # Verificar si el usuario existe
+        cursor.execute("SELECT id FROM usuarios WHERE id = %s", (usuario_id,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Usuario no encontrado"}), 404
+        
+        # Construir query de actualización
+        update_fields = []
+        update_values = []
+        
+        if nombre:
+            update_fields.append("nombre = %s")
+            update_values.append(nombre)
+        
+        if apellido:
+            update_fields.append("apellido = %s")
+            update_values.append(apellido)
+        
+        if usuario:
+            update_fields.append("usuario = %s")
+            update_values.append(usuario)
+        
+        if correo:
+            update_fields.append("correo = %s")
+            update_values.append(correo)
+        
+        if grupo_id:
+            update_fields.append("grupo_aprobacion_id = %s")
+            update_values.append(grupo_id)
+        
+        if password:
+            password_hash = generate_password_hash(password)
+            update_fields.append("password_hash = %s")
+            update_values.append(password_hash)
+        
+        if not update_fields:
+            return jsonify({"error": "No se proporcionaron datos para actualizar"}), 400
+        
+        # Agregar ID al final para el WHERE
+        update_values.append(usuario_id)
+        
+        query = f"UPDATE usuarios SET {', '.join(update_fields)} WHERE id = %s"
+        cursor.execute(query, update_values)
+        conn_pg.commit()
+        
+        return jsonify({"success": True, "message": "Usuario actualizado exitosamente"})
+        
+    except Exception as e:
+        conn_pg.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn_pg:
+            conn_pg.close()
+
+
+# Eliminar usuario
+@app.route("/eliminar_usuario", methods=["POST"])
+@login_required
+def eliminar_usuario():
+    # Verificar permisos
+    usuario_actual_id = session.get("user_id")
+    if not tiene_permiso(usuario_actual_id, 'usuarios'):
+        return jsonify({"error": "No tienes permisos para acceder a esta funcionalidad"}), 403
+    
+    try:
+        usuario_id = request.form.get("usuario_id")
+        
+        if not usuario_id or not usuario_id.isdigit():
+            return jsonify({"error": "ID de usuario no válido"}), 400
+        
+        # No permitir que un usuario se elimine a sí mismo
+        if int(usuario_id) == int(usuario_actual_id):
+            return jsonify({"error": "No puedes eliminar tu propia cuenta"}), 400
+        
+        conn_pg = postgres_connection()
+        cursor = conn_pg.cursor()
+        
+        # Verificar si el usuario existe
+        cursor.execute("SELECT id, usuario FROM usuarios WHERE id = %s", (usuario_id,))
+        usuario = cursor.fetchone()
+        
+        if not usuario:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+        
+        # Eliminar usuario
+        cursor.execute("DELETE FROM usuarios WHERE id = %s", (usuario_id,))
+        conn_pg.commit()
+        
+        return jsonify({"success": True, "message": f"Usuario {usuario[1]} eliminado exitosamente"})
+        
+    except Exception as e:
+        conn_pg.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn_pg:
+            conn_pg.close()
 
 
 
