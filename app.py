@@ -640,6 +640,10 @@ def actualizar_usuario():
 def eliminar_usuario():
     print("🔍 INICIANDO eliminación de usuario")
     print("=" * 50)
+    print(f"📥 Método: {request.method}")
+    print(f"📥 Headers: {dict(request.headers)}")
+    print(f"📥 Form data: {dict(request.form)}")
+    print(f"📥 Args: {dict(request.args)}")
     
     # Verificar permisos
     usuario_actual_id = session.get("user_id")

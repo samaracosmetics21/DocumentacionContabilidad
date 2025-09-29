@@ -233,7 +233,9 @@
                             <button class="btn btn-warning btn-sm me-2" onclick="editarUsuario({{ usuario[0] }})">
                                 <i class="fas fa-edit"></i> Editar
                             </button>
-                            <button class="btn btn-danger btn-sm" onclick="eliminarUsuario({{ usuario[0] }}, {{ usuario[3]|tojson }})">
+                            <button class="btn btn-danger btn-sm btn-eliminar" 
+                                    data-usuario-id="{{ usuario[0] }}" 
+                                    data-usuario-nombre="{{ usuario[3] }}">
                                 <i class="fas fa-trash"></i> Eliminar
                             </button>
                         </td>
@@ -397,6 +399,15 @@
 
             // Inicializar contador
             filterRows();
+            
+            // Event listeners para botones de eliminar
+            document.querySelectorAll('.btn-eliminar').forEach(button => {
+                button.addEventListener('click', function() {
+                    const usuarioId = this.getAttribute('data-usuario-id');
+                    const usuarioNombre = this.getAttribute('data-usuario-nombre');
+                    eliminarUsuario(usuarioId, usuarioNombre);
+                });
+            });
         });
 
         function confirmarAprobacion() {
@@ -459,35 +470,59 @@
         }
 
         function eliminarUsuario(usuarioId, nombreUsuario) {
-            console.log('Intentando eliminar usuario:', usuarioId, nombreUsuario);
+            console.log('🔍 Intentando eliminar usuario:', usuarioId, nombreUsuario);
             
-            if (confirm(`¿Estás seguro de eliminar al usuario "${nombreUsuario}"? Esta acción no se puede deshacer.`)) {
-                console.log('Confirmación aceptada, enviando solicitud...');
+            // Validar que el ID sea válido
+            if (!usuarioId || isNaN(usuarioId)) {
+                alert('Error: ID de usuario no válido');
+                return;
+            }
+            
+            const confirmMessage = '¿Estás seguro de eliminar al usuario "' + nombreUsuario + '"? Esta acción no se puede deshacer.';
+            
+            if (confirm(confirmMessage)) {
+                console.log('✅ Confirmación aceptada, enviando solicitud...');
                 
+                // Crear FormData
                 const formData = new FormData();
-                formData.append('usuario_id', usuarioId);
+                formData.append('usuario_id', usuarioId.toString());
                 
+                console.log('📤 Enviando datos:', {
+                    usuario_id: usuarioId,
+                    method: 'POST',
+                    url: '/eliminar_usuario'
+                });
+                
+                // Enviar solicitud
                 fetch('/eliminar_usuario', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
                 })
                 .then(response => {
-                    console.log('Respuesta recibida:', response.status);
+                    console.log('📥 Respuesta recibida:', response.status, response.statusText);
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                    }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Datos recibidos:', data);
+                    console.log('📊 Datos recibidos del servidor:', data);
                     if (data.success) {
-                        alert('Usuario eliminado exitosamente');
+                        alert('✅ Usuario eliminado exitosamente');
                         location.reload();
                     } else {
-                        alert('Error: ' + data.error);
+                        alert('❌ Error: ' + (data.error || 'Error desconocido'));
                     }
                 })
                 .catch(error => {
-                    console.error('Error en la solicitud:', error);
-                    alert('Error al eliminar el usuario: ' + error.message);
+                    console.error('❌ Error en la solicitud:', error);
+                    alert('❌ Error al eliminar el usuario: ' + error.message);
                 });
+            } else {
+                console.log('❌ Eliminación cancelada por el usuario');
             }
         }
     </script>
