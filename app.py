@@ -638,45 +638,62 @@ def actualizar_usuario():
 @app.route("/eliminar_usuario", methods=["POST"])
 @login_required
 def eliminar_usuario():
+    print("🔍 INICIANDO eliminación de usuario")
+    print("=" * 50)
+    
     # Verificar permisos
     usuario_actual_id = session.get("user_id")
+    print(f"Usuario actual: {usuario_actual_id}")
+    
     if not tiene_permiso(usuario_actual_id, 'usuarios'):
+        print("❌ Usuario sin permisos")
         return jsonify({"error": "No tienes permisos para acceder a esta funcionalidad"}), 403
     
     try:
         usuario_id = request.form.get("usuario_id")
+        print(f"ID de usuario a eliminar: {usuario_id}")
         
         if not usuario_id or not usuario_id.isdigit():
+            print("❌ ID de usuario no válido")
             return jsonify({"error": "ID de usuario no válido"}), 400
         
         # No permitir que un usuario se elimine a sí mismo
         if int(usuario_id) == int(usuario_actual_id):
+            print("❌ Intento de auto-eliminación")
             return jsonify({"error": "No puedes eliminar tu propia cuenta"}), 400
         
         conn_pg = postgres_connection()
         cursor = conn_pg.cursor()
+        print("✅ Conexión a base de datos establecida")
         
         # Verificar si el usuario existe
         cursor.execute("SELECT id, usuario FROM usuarios WHERE id = %s", (usuario_id,))
         usuario = cursor.fetchone()
+        print(f"Usuario encontrado: {usuario}")
         
         if not usuario:
+            print("❌ Usuario no encontrado")
             return jsonify({"error": "Usuario no encontrado"}), 404
         
         # Eliminar usuario
+        print(f"🗑️ Eliminando usuario {usuario[1]} (ID: {usuario[0]})")
         cursor.execute("DELETE FROM usuarios WHERE id = %s", (usuario_id,))
         conn_pg.commit()
+        print("✅ Usuario eliminado exitosamente")
         
         return jsonify({"success": True, "message": f"Usuario {usuario[1]} eliminado exitosamente"})
         
     except Exception as e:
-        conn_pg.rollback()
+        print(f"❌ Error eliminando usuario: {e}")
+        if 'conn_pg' in locals():
+            conn_pg.rollback()
         return jsonify({"error": str(e)}), 500
     finally:
-        if cursor:
+        if 'cursor' in locals():
             cursor.close()
-        if conn_pg:
+        if 'conn_pg' in locals():
             conn_pg.close()
+        print("🔒 Conexiones cerradas")
 
 
 

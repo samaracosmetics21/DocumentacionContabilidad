@@ -96,6 +96,33 @@
             color: green; 
             font-weight: bold; 
         }
+
+        /* Estilos para el campo de búsqueda */
+        .input-group-text {
+            background-color: #e9ecef;
+            border-color: #ced4da;
+        }
+
+        #searchInput {
+            border-left: none;
+        }
+
+        #searchInput:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        #clearSearch {
+            border-left: none;
+        }
+
+        #clearSearch:hover {
+            background-color: #f8f9fa;
+        }
+
+        .badge.bg-info {
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -159,6 +186,27 @@
 
         <div class="table-container">
             <h2>Usuarios Registrados</h2>
+            
+            <!-- Campo de búsqueda -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Buscar por nombre, apellido, usuario, correo...">
+                        <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                            <i class="fas fa-times"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-end align-items-center">
+                        <span class="badge bg-info me-2" id="resultCount">Total: {{ usuarios_existentes|length if usuarios_existentes else 0 }}</span>
+                    </div>
+                </div>
+            </div>
+            
             {% if usuarios_existentes %}
             <table class="table table-striped">
                 <thead>
@@ -252,6 +300,105 @@
     </div>
 
     <script>
+        // Funcionalidad de búsqueda
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const clearSearch = document.getElementById('clearSearch');
+            const resultCount = document.getElementById('resultCount');
+            const tableRows = document.querySelectorAll('tbody tr');
+            const totalRows = tableRows.length;
+
+            // Función para filtrar las filas
+            function filterRows() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                let visibleCount = 0;
+
+                tableRows.forEach(function(row) {
+                    const cells = row.querySelectorAll('td');
+                    let shouldShow = false;
+
+                    if (searchTerm === '') {
+                        shouldShow = true;
+                    } else {
+                        // Buscar en todas las celdas de la fila (excepto la última que son los botones)
+                        for (let i = 0; i < cells.length - 1; i++) {
+                            const cellText = cells[i].textContent.toLowerCase();
+                            if (cellText.includes(searchTerm)) {
+                                shouldShow = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (shouldShow) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                // Actualizar contador de resultados
+                resultCount.textContent = `Mostrando: ${visibleCount} de ${totalRows}`;
+                
+                // Mostrar mensaje si no hay resultados
+                if (visibleCount === 0 && searchTerm !== '') {
+                    showNoResultsMessage();
+                } else {
+                    hideNoResultsMessage();
+                }
+            }
+
+            // Función para mostrar mensaje de "no hay resultados"
+            function showNoResultsMessage() {
+                let noResultsRow = document.getElementById('noResultsRow');
+                if (!noResultsRow) {
+                    const tbody = document.querySelector('tbody');
+                    noResultsRow = document.createElement('tr');
+                    noResultsRow.id = 'noResultsRow';
+                    noResultsRow.innerHTML = `
+                        <td colspan="7" class="text-center py-4">
+                            <div class="alert alert-warning mb-0">
+                                <i class="fas fa-search me-2"></i>
+                                No se encontraron resultados para "${searchInput.value}"
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(noResultsRow);
+                }
+                noResultsRow.style.display = '';
+            }
+
+            // Función para ocultar mensaje de "no hay resultados"
+            function hideNoResultsMessage() {
+                const noResultsRow = document.getElementById('noResultsRow');
+                if (noResultsRow) {
+                    noResultsRow.style.display = 'none';
+                }
+            }
+
+            // Función para limpiar búsqueda
+            function clearSearchFunction() {
+                searchInput.value = '';
+                filterRows();
+                searchInput.focus();
+            }
+
+            // Event listeners
+            searchInput.addEventListener('input', filterRows);
+            clearSearch.addEventListener('click', clearSearchFunction);
+
+            // Limpiar búsqueda con tecla Escape
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    clearSearchFunction();
+                }
+            });
+
+            // Inicializar contador
+            filterRows();
+        });
+
         function confirmarAprobacion() {
             if (confirm("¿Estás seguro de crear este usuario? Esta acción no se puede deshacer.")) {
                 return true;
@@ -312,7 +459,11 @@
         }
 
         function eliminarUsuario(usuarioId, nombreUsuario) {
+            console.log('Intentando eliminar usuario:', usuarioId, nombreUsuario);
+            
             if (confirm(`¿Estás seguro de eliminar al usuario "${nombreUsuario}"? Esta acción no se puede deshacer.`)) {
+                console.log('Confirmación aceptada, enviando solicitud...');
+                
                 const formData = new FormData();
                 formData.append('usuario_id', usuarioId);
                 
@@ -320,8 +471,12 @@
                     method: 'POST',
                     body: formData
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Respuesta recibida:', response.status);
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Datos recibidos:', data);
                     if (data.success) {
                         alert('Usuario eliminado exitosamente');
                         location.reload();
@@ -330,8 +485,8 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error al eliminar el usuario');
+                    console.error('Error en la solicitud:', error);
+                    alert('Error al eliminar el usuario: ' + error.message);
                 });
             }
         }
