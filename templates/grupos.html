@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Grupos de Aprobación</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
             background-color: #f8f9fa;
@@ -205,31 +206,153 @@
 
         <hr>
 
+        <!-- Sección de Descripción de Permisos -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h3 class="mb-0"><i class="fas fa-info-circle"></i> Descripción de Permisos por Módulo</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">Esta tabla muestra qué permisos tiene cada grupo en el sistema:</p>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Módulo</th>
+                                <th>Descripción</th>
+                                <th>Acciones Permitidas</th>
+                                <th>Grupos con Acceso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for modulo, info in descripciones_permisos.items() %}
+                            <tr>
+                                <td><strong>{{ info.nombre }}</strong></td>
+                                <td>{{ info.descripcion }}</td>
+                                <td>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for accion in info.acciones %}
+                                        <li><i class="fas fa-check text-success"></i> {{ accion }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td>
+                                    {% set grupos_con_acceso = permisos_modulos.get(modulo, []) %}
+                                    {% if '*' in grupos_con_acceso %}
+                                        <span class="badge bg-success">Todos los usuarios</span>
+                                    {% elif grupos_con_acceso %}
+                                        {% for grupo in grupos_con_acceso %}
+                                        <span class="badge bg-primary me-1">{{ grupo }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="badge bg-danger">Sin acceso</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <h2>Grupos Registrados</h2>
         
         <!-- Mostrar tabla si existen grupos -->
         {% if grupos %}
-        <table class="table table-striped table-bordered">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre del Grupo</th>
-                    <th>Descripción</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for grupo in grupos %}
-                <tr>
-                    <td>{{ grupo[0] }}</td>
-                    <td>{{ grupo[1] }}</td>
-                    <td>{{ grupo[2] }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre del Grupo</th>
+                        <th>Descripción</th>
+                        <th>Módulos con Acceso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for grupo in grupos %}
+                    <tr>
+                        <td>{{ grupo[0] }}</td>
+                        <td><strong>{{ grupo[1] }}</strong></td>
+                        <td>{{ grupo[2] }}</td>
+                        <td>
+                            {% set grupo_nombre = grupo[1] %}
+                            {% set modulos_grupo = [] %}
+                            {% for modulo, grupos_permiso in permisos_modulos.items() %}
+                                {% if '*' in grupos_permiso or grupo_nombre in grupos_permiso %}
+                                    {% set _ = modulos_grupo.append(modulo) %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if modulos_grupo %}
+                                {% for modulo in modulos_grupo %}
+                                    {% set info_modulo = descripciones_permisos.get(modulo, {}) %}
+                                    <span class="badge bg-success me-1 mb-1" title="{{ info_modulo.get('descripcion', '') }}">
+                                        <i class="fas fa-cog"></i> {{ info_modulo.get('nombre', modulo) }}
+                                    </span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="badge bg-warning">Sin módulos asignados</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-        <div class="alert">
-            <strong>No se han registrado grupos aún.</strong>
+        <div class="alert alert-info">
+            <strong><i class="fas fa-info-circle"></i> No se han registrado grupos aún.</strong>
+        </div>
+        {% endif %}
+
+        <!-- Resumen de Permisos por Grupo -->
+        {% if grupos %}
+        <div class="card mt-4">
+            <div class="card-header bg-warning text-dark">
+                <h3 class="mb-0"><i class="fas fa-users-cog"></i> Resumen de Permisos por Grupo</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for grupo in grupos %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="fas fa-users"></i> {{ grupo[1] }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">{{ grupo[2] }}</p>
+                                <h6 class="text-primary">Módulos Accesibles:</h6>
+                                {% set grupo_nombre = grupo[1] %}
+                                {% set modulos_grupo = [] %}
+                                {% for modulo, grupos_permiso in permisos_modulos.items() %}
+                                    {% if '*' in grupos_permiso or grupo_nombre in grupos_permiso %}
+                                        {% set _ = modulos_grupo.append(modulo) %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if modulos_grupo %}
+                                    <ul class="list-unstyled">
+                                        {% for modulo in modulos_grupo %}
+                                            {% set info_modulo = descripciones_permisos.get(modulo, {}) %}
+                                            <li class="mb-1">
+                                                <i class="fas fa-check-circle text-success"></i> 
+                                                <strong>{{ info_modulo.get('nombre', modulo) }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ info_modulo.get('descripcion', '') }}</small>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sin módulos asignados</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
         {% endif %}
     </div>

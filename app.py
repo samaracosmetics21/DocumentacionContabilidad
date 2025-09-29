@@ -72,6 +72,75 @@ PERMISOS_MODULOS = {
     'auditor': ['Auditores']  # Solo Auditores pueden acceder
 }
 
+# Descripciones detalladas de permisos por módulo
+DESCRIPCIONES_PERMISOS = {
+    'grupos': {
+        'nombre': 'Gestión de Grupos',
+        'descripcion': 'Crear, editar y eliminar grupos de aprobación. Define los roles del sistema.',
+        'acciones': ['Crear grupos', 'Editar grupos', 'Eliminar grupos', 'Asignar permisos']
+    },
+    'usuarios': {
+        'nombre': 'Gestión de Usuarios',
+        'descripcion': 'Crear, editar y eliminar usuarios del sistema. Asignar grupos y permisos.',
+        'acciones': ['Crear usuarios', 'Editar usuarios', 'Eliminar usuarios', 'Asignar grupos']
+    },
+    'gestion_inicial_mp': {
+        'nombre': 'Gestión Inicial MP',
+        'descripcion': 'Registrar y gestionar órdenes de compra de materia prima.',
+        'acciones': ['Registrar órdenes', 'Editar órdenes', 'Subir archivos', 'Consultar órdenes']
+    },
+    'bodega': {
+        'nombre': 'Aprobación Bodega',
+        'descripcion': 'Aprobar facturas en el módulo de bodega. Validar recepción de mercancía.',
+        'acciones': ['Aprobar facturas', 'Asignar lotes', 'Cerrar órdenes', 'Validar recepción']
+    },
+    'compras': {
+        'nombre': 'Aprobación Compras',
+        'descripcion': 'Aprobar facturas en el módulo de compras. Validar documentación.',
+        'acciones': ['Aprobar facturas', 'Validar remisiones', 'Registrar pagos', 'Gestionar compras']
+    },
+    'servicios': {
+        'nombre': 'Asignación Servicios',
+        'descripcion': 'Asignar facturas de servicios a usuarios específicos para su procesamiento.',
+        'acciones': ['Asignar facturas', 'Enviar notificaciones', 'Gestionar asignaciones']
+    },
+    'asignaciones': {
+        'nombre': 'Mis Asignaciones',
+        'descripcion': 'Ver y gestionar las facturas asignadas al usuario actual.',
+        'acciones': ['Ver asignaciones', 'Aprobar facturas', 'Gestionar tareas']
+    },
+    'pago_servicios': {
+        'nombre': 'Pago Servicios',
+        'descripcion': 'Aprobar pagos de facturas de servicios. Autorización de jefe de servicios.',
+        'acciones': ['Aprobar pagos', 'Autorizar servicios', 'Gestionar pagos']
+    },
+    'pago_mp': {
+        'nombre': 'Pago Materia Prima',
+        'descripcion': 'Aprobar pagos de facturas de materia prima. Autorización de jefe de MP.',
+        'acciones': ['Aprobar pagos', 'Autorizar MP', 'Gestionar pagos MP']
+    },
+    'gestion_final': {
+        'nombre': 'Gestión Final',
+        'descripcion': 'Procesamiento final de facturas. Vinculación automática con SQL Server.',
+        'acciones': ['Procesar facturas', 'Vincular documentos', 'Actualizar datos', 'Finalizar proceso']
+    },
+    'tesoreria': {
+        'nombre': 'Tesorería',
+        'descripcion': 'Vincular documentos de pago con facturas. Gestión de comprobantes de egreso.',
+        'acciones': ['Vincular documentos', 'Subir archivos PDF', 'Gestionar pagos', 'Crear comprobantes']
+    },
+    'facturas_resumen': {
+        'nombre': 'Resumen Facturas',
+        'descripcion': 'Ver el estado completo de todas las facturas del sistema.',
+        'acciones': ['Consultar facturas', 'Ver estados', 'Exportar datos', 'Generar reportes']
+    },
+    'auditor': {
+        'nombre': 'Auditoría',
+        'descripcion': 'Revisar y aprobar facturas desde el punto de vista de auditoría.',
+        'acciones': ['Revisar facturas', 'Aprobar auditoría', 'Validar procesos', 'Generar reportes']
+    }
+}
+
 def tiene_permiso(usuario_id, modulo):
     """
     Verifica si un usuario tiene permiso para acceder a un módulo específico
@@ -398,7 +467,8 @@ def gestion_grupos():
 
     return render_template("grupos.html", 
                          grupo_usuario=grupo_usuario,
-                         permisos_modulos=PERMISOS_MODULOS)
+                         permisos_modulos=PERMISOS_MODULOS,
+                         descripciones_permisos=DESCRIPCIONES_PERMISOS)
 
 
 # Gestión de Usuarios
