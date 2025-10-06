@@ -226,6 +226,10 @@ def index():
     usuario_id = session.get("user_id")
     grupo_usuario = obtener_permisos_usuario(usuario_id)
     
+    # Redirigir usuarios genéricos directamente a asignaciones
+    if grupo_usuario and grupo_usuario not in ['Contabilidad', 'Sistemas']:
+        return redirect(url_for('gestion_asignaciones'))
+    
     if request.method == "POST":
         try:
             # Procesar datos del formulario
