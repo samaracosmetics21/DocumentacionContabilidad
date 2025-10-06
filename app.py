@@ -3318,12 +3318,32 @@ def auditor():
     cursor = conn_pg.cursor()
 
     try:
-        cursor.execute("""
-            select id, numero_ofimatica, nit, nombre, numero_factura, fecha_seleccionada, nrodcto_oc, archivo_path,
-                   bruto, iva_bruto, vl_retfte, v_retica, v_reteniva, subtotal, total
-	        from facturas where aproba_auditor='Pendiente' 
-        """)
+        consulta_auditor = """
+            SELECT 
+                id,
+                numero_ofimatica,
+                nit,
+                nombre,
+                numero_factura,
+                TO_CHAR(fecha_seleccionada,'YYYY-MM-DD') AS fecha_seleccionada,
+                nrodcto_oc,
+                archivo_path,
+                bruto,
+                iva_bruto,
+                vl_retfte,
+                v_retica,
+                v_reteniva,
+                subtotal,
+                total
+            FROM facturas 
+            WHERE aproba_auditor='Pendiente'
+        """
+        print("/auditor -> Ejecutando consulta:\n", consulta_auditor)
+        cursor.execute(consulta_auditor)
         facturas = cursor.fetchall()
+        print(f"/auditor -> Filas obtenidas: {len(facturas)}")
+        if facturas:
+            print("/auditor -> Primera fila (muestra):", facturas[0])
 
     except Exception as e:
         flash(f"Error al consultar las facturas: {str(e)}", "error")
