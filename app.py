@@ -2948,14 +2948,16 @@ def facturas_servicios():
     # Verificar si el usuario tiene permiso para acceder a este módulo
     if not tiene_permiso(usuario_id, 'facturas_resumen'):
         flash("No tienes permisos para acceder a este módulo.", "error")
+        print("/facturas_resumen -> Acceso denegado para usuario:", usuario_id)
         return redirect("/")
+    
+    print("/facturas_resumen -> Usuario:", usuario_id, "Grupo:", grupo_usuario)
     
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
 
     try:
-        # Ejecutar la consulta para obtener las facturas con los campos especificados
-        cursor.execute("""
+        consulta = """
             SELECT 
                 f.nit, 
                 f.nombre, 
@@ -2966,7 +2968,7 @@ def facturas_servicios():
                 f.archivo_path,
                 f.hora_aprobacion as aprobacion_bodega, 
                 f.estado as estado_aprobacion_bodega, 
-                COALESCE(u.usuario, '') as usuario_aprueba_bodega,  -- Si no hay nombre de usuario, muestra vacío
+                COALESCE(u.usuario, '') as usuario_aprueba_bodega,
                 f.estado_compras,
                 f.hora_aprobacion_compras,
                 COALESCE(u1.usuario, '') as usuario_aprueba_compras, 
@@ -2991,21 +2993,30 @@ def facturas_servicios():
             LEFT JOIN usuarios u1 ON f.aprobado_compras = u1.id  
             LEFT JOIN usuarios u2 ON f.aprobado_servicios = u2.id 
             LEFT JOIN usuarios u3 ON f.usuario_asignado_servicios = u3.id 
-            --WHERE clasificacion = 'Servicios' AND estado = 'Pendiente'
-            --ORDER BY fecha_seleccionada ASC
-        """)
-        facturas = cursor.fetchall()
+        """
+        print("/facturas_resumen -> Ejecutando consulta:\n", consulta)
 
+        cursor.execute(consulta)
+        facturas = cursor.fetchall()
+        print(f"/facturas_resumen -> Filas obtenidas: {len(facturas)}")
+        if facturas:
+            print("/facturas_resumen -> Primera fila (muestra):", facturas[0])
+        else:
+            print("/facturas_resumen -> SIN RESULTADOS")
+        
     except Exception as e:
+        print("/facturas_resumen -> Error en consulta:", e)
         flash(f"Error al consultar las facturas: {str(e)}", "error")
         facturas = []
-
+    
     finally:
         if cursor:
             cursor.close()
         if conn_pg:
             conn_pg.close()
-
+        print("/facturas_resumen -> Conexiones cerradas")
+    
+    print("/facturas_resumen -> Renderizando plantilla con filas:", len(facturas))
     return render_template("facturas_servicios.html", 
                          facturas=facturas,
                          grupo_usuario=grupo_usuario,
