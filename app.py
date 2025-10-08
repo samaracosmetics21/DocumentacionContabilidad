@@ -226,9 +226,23 @@ def index():
     usuario_id = session.get("user_id")
     grupo_usuario = obtener_permisos_usuario(usuario_id)
     
-    # Redirigir usuarios genéricos directamente a asignaciones
-    if grupo_usuario and grupo_usuario not in ['Contabilidad', 'Sistemas']:
-        return redirect(url_for('gestion_asignaciones'))
+    # Redirigir usuarios según su grupo a su vista específica
+    if grupo_usuario:
+        if grupo_usuario == 'Auditores':
+            return redirect(url_for('auditor'))
+        elif grupo_usuario == 'Compras':
+            return redirect(url_for('gestion_inicial'))
+        elif grupo_usuario == 'Bodega':
+            return redirect(url_for('gestion_bodega'))
+        elif grupo_usuario == 'jefe_servicios':
+            return redirect(url_for('pago_servicios'))
+        elif grupo_usuario == 'jefe_mp':
+            return redirect(url_for('pago_mp'))
+        elif grupo_usuario == 'tesoreria':
+            return redirect(url_for('tesoreria'))
+        elif grupo_usuario not in ['Contabilidad', 'Sistemas']:
+            # Usuarios genéricos van a asignaciones
+            return redirect(url_for('gestion_asignaciones'))
     
     if request.method == "POST":
         try:
