@@ -86,11 +86,108 @@
             <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
         </form>
         <div class="footer-text">
-            <small>¿No tienes cuenta? <a href="#" class="text-primary">Regístrate aquí</a></small>
+            <small><a href="#" class="text-primary" data-bs-toggle="modal" data-bs-target="#cambiarPasswordModal">¿Olvidaste tu contraseña? Cámbiala aquí</a></small>
+        </div>
+    </div>
+
+    <!-- Modal para Cambiar Contraseña -->
+    <div class="modal fade" id="cambiarPasswordModal" tabindex="-1" aria-labelledby="cambiarPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cambiarPasswordModalLabel">Cambiar Contraseña</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{{ url_for('cambiar_password') }}" id="formCambiarPassword">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="usuario_cambio" class="form-label">Usuario</label>
+                            <input type="text" name="usuario" id="usuario_cambio" class="form-control" placeholder="Ingrese su usuario" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password_actual" class="form-label">Contraseña Actual</label>
+                            <input type="password" name="password_actual" id="password_actual" class="form-control" placeholder="Ingrese su contraseña actual" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password_nueva" class="form-label">Contraseña Nueva</label>
+                            <input type="password" name="password_nueva" id="password_nueva" class="form-control" placeholder="Ingrese su nueva contraseña" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password_confirmar" class="form-label">Confirmar Contraseña Nueva</label>
+                            <input type="password" name="password_confirmar" id="password_confirmar" class="form-control" placeholder="Confirme su nueva contraseña" required>
+                        </div>
+                        <div id="mensajeError" class="alert alert-danger d-none" role="alert"></div>
+                        <div id="mensajeExito" class="alert alert-success d-none" role="alert"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <!-- Scripts de Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Validación frontend antes de enviar
+        document.getElementById('formCambiarPassword').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const passwordNueva = document.getElementById('password_nueva').value;
+            const passwordConfirmar = document.getElementById('password_confirmar').value;
+            const mensajeError = document.getElementById('mensajeError');
+            const mensajeExito = document.getElementById('mensajeExito');
+            
+            // Ocultar mensajes previos
+            mensajeError.classList.add('d-none');
+            mensajeExito.classList.add('d-none');
+            
+            // Validar que las contraseñas coincidan
+            if (passwordNueva !== passwordConfirmar) {
+                mensajeError.textContent = 'Las contraseñas no coinciden';
+                mensajeError.classList.remove('d-none');
+                return;
+            }
+            
+            // Validar longitud mínima
+            if (passwordNueva.length < 6) {
+                mensajeError.textContent = 'La contraseña debe tener al menos 6 caracteres';
+                mensajeError.classList.remove('d-none');
+                return;
+            }
+            
+            // Enviar formulario
+            const formData = new FormData(this);
+            
+            fetch('{{ url_for("cambiar_password") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mensajeExito.textContent = data.message;
+                    mensajeExito.classList.remove('d-none');
+                    // Limpiar formulario
+                    this.reset();
+                    // Cerrar modal después de 2 segundos
+                    setTimeout(() => {
+                        bootstrap.Modal.getInstance(document.getElementById('cambiarPasswordModal')).hide();
+                        mensajeExito.classList.add('d-none');
+                    }, 2000);
+                } else {
+                    mensajeError.textContent = data.message;
+                    mensajeError.classList.remove('d-none');
+                }
+            })
+            .catch(error => {
+                mensajeError.textContent = 'Error al cambiar la contraseña. Intente nuevamente.';
+                mensajeError.classList.remove('d-none');
+            });
+        });
+    </script>
 </body>
 </html>

@@ -1295,6 +1295,77 @@ def login():
 
     return render_template("login.html")
 
+
+@app.route("/cambiar_password", methods=["POST"])
+def cambiar_password():
+    """
+    Endpoint para cambiar la contraseña de un usuario.
+    Valida la contraseña actual antes de permitir el cambio.
+    """
+    try:
+        usuario = request.form.get("usuario")
+        password_actual = request.form.get("password_actual")
+        password_nueva = request.form.get("password_nueva")
+        password_confirmar = request.form.get("password_confirmar")
+        
+        # Validaciones básicas
+        if not all([usuario, password_actual, password_nueva, password_confirmar]):
+            return jsonify({"success": False, "message": "Todos los campos son requeridos"}), 400
+        
+        if password_nueva != password_confirmar:
+            return jsonify({"success": False, "message": "Las contraseñas nuevas no coinciden"}), 400
+        
+        if len(password_nueva) < 6:
+            return jsonify({"success": False, "message": "La contraseña debe tener al menos 6 caracteres"}), 400
+        
+        # Conectar a la base de datos
+        conn_pg = postgres_connection()
+        cursor = conn_pg.cursor()
+        
+        # Verificar que el usuario existe y obtener su contraseña actual
+        cursor.execute("SELECT id, password_hash FROM usuarios WHERE usuario = %s", (usuario,))
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.close()
+            conn_pg.close()
+            return jsonify({"success": False, "message": "Usuario no encontrado"}), 404
+        
+        user_id = user[0]
+        password_hash_actual = user[1]
+        
+        # Verificar que la contraseña actual sea correcta
+        if not check_password_hash(password_hash_actual, password_actual):
+            cursor.close()
+            conn_pg.close()
+            return jsonify({"success": False, "message": "La contraseña actual es incorrecta"}), 401
+        
+        # Generar hash de la nueva contraseña
+        nuevo_password_hash = generate_password_hash(password_nueva)
+        
+        # Actualizar la contraseña en la base de datos
+        cursor.execute("""
+            UPDATE usuarios 
+            SET password_hash = %s 
+            WHERE id = %s
+        """, (nuevo_password_hash, user_id))
+        
+        conn_pg.commit()
+        cursor.close()
+        conn_pg.close()
+        
+        print(f"✅ Contraseña cambiada exitosamente para el usuario: {usuario}")
+        
+        return jsonify({
+            "success": True, 
+            "message": "Contraseña cambiada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña."
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error al cambiar contraseña: {str(e)}")
+        return jsonify({"success": False, "message": f"Error al cambiar la contraseña: {str(e)}"}), 500
+
+
 @app.route("/servicios", methods=["GET", "POST"])
 @login_required
 def gestion_servicios():
