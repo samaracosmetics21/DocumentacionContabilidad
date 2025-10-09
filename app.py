@@ -1433,14 +1433,26 @@ def gestion_servicios():
                 flash(f"Error aprobando y asignando factura: {str(e)}", "error")
 
         # Consultar facturas pendientes
-        cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado, nombre 
+        consulta_servicios = """
+            SELECT 
+                id, 
+                nit, 
+                numero_factura, 
+                TO_CHAR(fecha_seleccionada, 'YYYY-MM-DD') AS fecha_seleccionada, 
+                clasificacion, 
+                archivo_path, 
+                estado, 
+                nombre 
             FROM facturas
             WHERE clasificacion = 'Servicios' AND estado = 'Pendiente'
             ORDER BY fecha_seleccionada ASC
-        """)
+        """
+        print("/servicios -> Ejecutando consulta:\n", consulta_servicios)
+        cursor.execute(consulta_servicios)
         facturas = cursor.fetchall()
-        print("Facturas pendientes obtenidas:", facturas)
+        print(f"/servicios -> Filas obtenidas: {len(facturas)}")
+        if facturas:
+            print("/servicios -> Primera fila (muestra):", facturas[0])
 
         # Consultar usuarios disponibles para asignar
         cursor.execute("""
