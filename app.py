@@ -68,7 +68,7 @@ PERMISOS_MODULOS = {
     'pago_mp': ['jefe_mp'],  # Solo jefe_mp puede aprobar pagos de MP
     'gestion_final': ['Contabilidad'],  # Solo Contabilidad puede hacer gestión final
     'tesoreria': ['Contabilidad', 'jefe_servicios', 'jefe_mp', 'tesoreria'],  # Múltiples grupos pueden acceder
-    'facturas_resumen': ['*'],  # Todos los usuarios pueden ver el resumen
+    'facturas_resumen': ['*'],  # Todos los usuarios EXCEPTO Genericos (ver función tiene_permiso)
     'auditor': ['Auditores']  # Solo Auditores pueden acceder
 }
 
@@ -151,8 +151,11 @@ def tiene_permiso(usuario_id, modulo):
     
     permisos_modulo = PERMISOS_MODULOS.get(modulo, [])
     
-    # Si '*' está en los permisos, todos pueden acceder
+    # Si '*' está en los permisos, todos pueden acceder EXCEPTO grupos bloqueados
     if '*' in permisos_modulo:
+        # Bloquear acceso a "Resumen Facturas" para usuarios del grupo "Genericos"
+        if modulo == 'facturas_resumen' and grupo_usuario == 'Genericos':
+            return False
         return True
     
     # Si el grupo del usuario está en los permisos del módulo
