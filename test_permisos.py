@@ -37,19 +37,19 @@ def test_permisos():
     
     # 3. Definir permisos por módulo (copiado del código)
     PERMISOS_MODULOS = {
-        'grupos': ['Contabilidad'],
-        'usuarios': ['Contabilidad'],
-        'gestion_inicial_mp': ['Compras'],
-        'bodega': ['Bodega'],
-        'compras': ['Compras'],
-        'servicios': ['Contabilidad'],
+        'grupos': ['Contabilidad', 'Sistemas'],
+        'usuarios': ['Contabilidad', 'Sistemas'],
+        'gestion_inicial_mp': ['Compras', 'Sistemas'],
+        'bodega': ['Bodega', 'Sistemas'],
+        'compras': ['Compras', 'Sistemas'],
+        'servicios': ['Contabilidad', 'Sistemas'],
         'asignaciones': ['*'],
-        'pago_servicios': ['jefe_servicios'],
-        'pago_mp': ['jefe_mp'],
-        'gestion_final': ['Contabilidad'],
-        'tesoreria': ['Contabilidad', 'jefe_servicios', 'jefe_mp', 'tesoreria'],
-        'facturas_resumen': ['*'],
-        'auditor': ['Auditores']
+        'pago_servicios': ['jefe_servicios', 'Sistemas'],
+        'pago_mp': ['jefe_mp', 'Sistemas'],
+        'gestion_final': ['Contabilidad', 'Sistemas'],
+        'tesoreria': ['Contabilidad', 'jefe_servicios', 'jefe_mp', 'tesoreria', 'Sistemas'],
+        'facturas_resumen': ['*'],  # Todos EXCEPTO Genericos
+        'auditor': ['Auditores', 'Sistemas', 'Contabilidad']
     }
     
     # 4. Probar permisos para cada usuario
