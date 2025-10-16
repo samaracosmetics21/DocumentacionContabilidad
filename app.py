@@ -1642,8 +1642,18 @@ def gestion_asignaciones():
 
         # Consultar facturas asignadas al usuario actual
         print("Consultando facturas asignadas al usuario actual...")
-        cursor.execute("""
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, estado_usuario_asignado, estado_usuario_asignado, hora_aprobacion_asignado, nombre
+        consulta_asignaciones = """
+            SELECT 
+                id, 
+                nit, 
+                numero_factura, 
+                TO_CHAR(fecha_seleccionada, 'YYYY-MM-DD') AS fecha_seleccionada, 
+                clasificacion, 
+                archivo_path, 
+                estado_usuario_asignado, 
+                estado_usuario_asignado, 
+                TO_CHAR(hora_aprobacion_asignado, 'YYYY-MM-DD HH24:MI:SS') AS hora_aprobacion_asignado, 
+                nombre
             FROM facturas
             WHERE usuario_asignado_servicios = %s
             ORDER BY 
@@ -1653,9 +1663,13 @@ def gestion_asignaciones():
                     ELSE 3 
                 END,
                 fecha_seleccionada ASC
-        """, (usuario_actual_id,))
+        """
+        print("/asignaciones -> Ejecutando consulta:\n", consulta_asignaciones)
+        cursor.execute(consulta_asignaciones, (usuario_actual_id,))
         facturas_asignadas = cursor.fetchall()
-        print(f"Facturas asignadas obtenidas: {facturas_asignadas}")
+        print(f"/asignaciones -> Filas obtenidas: {len(facturas_asignadas)}")
+        if facturas_asignadas:
+            print("/asignaciones -> Primera fila (muestra):", facturas_asignadas[0])
 
     except Exception as e:
         print(f"Error general en /asignaciones: {e}")
