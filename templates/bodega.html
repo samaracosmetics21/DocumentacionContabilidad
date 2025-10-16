@@ -1,28 +1,56 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Bodega</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{% extends "base.html" %}
 
-     <!-- Bootstrap CSS -->
-     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+{% block title %}Gestión de Bodega{% endblock %}
 
-     <!-- DataTables CSS -->
-     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
-
-     <style>
-
+{% block extra_css %}
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
         .card {
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                }
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .btn-loading {
+            position: relative;
+            pointer-events: none;
+        }
+        .btn-loading::after {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .alert-dynamic {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+        }
     </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
     <div class="container mt-4">
-        <h2>Gestión de Bodega</h2>
+        <!-- Header mejorado -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-warehouse"></i> Gestión de Bodega</h2>
+            <div>
+                <span class="badge bg-primary">{{ grupo_usuario }}</span>
+            </div>
+        </div>
 
         <!-- Mensajes de flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -33,10 +61,13 @@
         {% endif %}
         {% endwith %}
         
-         <div class="card">
+        <!-- Alertas dinámicas -->
+        <div id="alert-container"></div>
+        
+        <div class="card">
             <div class="card-body">
-
-                <form method="POST" action="/bodega" onsubmit="return validarFormulario();">
+                <!-- Formulario convertido a AJAX -->
+                <div id="bodega-form">
                     <input type="hidden" name="usuario_id" id="usuario_id" value="{{ session['user_id'] }}">
         
                     <div class="mb-4">
@@ -60,7 +91,7 @@
                         </thead>
                         <tbody>
                             {% for orden in ordenes_compras %}
-                            <tr>
+                            <tr data-orden-id="{{ orden[0] }}">
                                 <td>{{ orden[0] }}</td>
                                 <td>{{ orden[2] }}</td>
                                 <td>{{ orden[3] }}</td>
@@ -103,25 +134,31 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <!-- ① Aprobar Seleccionadas -->
-                                    <button type="submit" name="accion" value="aprobar_{{ orden[0] }}" 
+                                    <!-- ① Aprobar Seleccionadas - AJAX -->
+                                    <button type="button" 
                                     class="btn btn-success btn-sm mt-3" 
-                                    onclick="return confirmarAprobacion();">
-                                    <span class="badge bg-light text-dark rounded-circle me-1">1</span> Vincular Lotes
+                                    onclick="aprobarFactura({{ orden[0] }})"
+                                    id="btn-aprobar-{{ orden[0] }}">
+                                    <span class="badge bg-light text-dark rounded-circle me-1">1</span> 
+                                    <i class="fas fa-link"></i> Vincular Lotes
                                     </button>
         
-                                    <!-- Cerrar Factura -->
-                                    <button type="submit" name="accion" value="cerrar_factura_{{ orden[0] }}" 
+                                    <!-- Cerrar Factura - AJAX -->
+                                    <button type="button" 
                                     class="btn btn-warning btn-sm mt-3" 
-                                    onclick="return confirmarCierreFactura();">
-                                    <span class="badge bg-light text-dark rounded-circle me-1">2</span> Cerrar Factura
+                                    onclick="cerrarFactura({{ orden[0] }})"
+                                    id="btn-cerrar-factura-{{ orden[0] }}">
+                                    <span class="badge bg-light text-dark rounded-circle me-1">2</span> 
+                                    <i class="fas fa-times-circle"></i> Cerrar Factura
                                     </button>
         
-                                    <!-- Cerrar Orden Compra -->
-                                    <button type="submit" name="accion" value="cerrar_orden_{{ orden[0] }}" 
+                                    <!-- Cerrar Orden Compra - AJAX -->
+                                    <button type="button" 
                                     class="btn btn-danger btn-sm mt-3" 
-                                    onclick="return confirmarAprobacion();">
-                                    <span class="badge bg-light text-dark rounded-circle me-1">3</span> Cerrar OC
+                                    onclick="cerrarOrden({{ orden[0] }})"
+                                    id="btn-cerrar-orden-{{ orden[0] }}">
+                                    <span class="badge bg-light text-dark rounded-circle me-1">3</span> 
+                                    <i class="fas fa-ban"></i> Cerrar OC
                                     </button>
         
                                 </td>
@@ -129,24 +166,221 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    
-                </form>
+                </div>
 
             </div>
-
-         </div>   
-        
-      
+        </div>   
     </div>
+{% endblock %}
 
-    <!-- Bootstrap JS y DataTables JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
-
     <script>
+        // Variables globales
+        let table;
+        
+        // Función para mostrar alertas dinámicas
+        function mostrarAlerta(mensaje, tipo = 'success') {
+            const alertContainer = document.getElementById('alert-container');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHTML = `
+                <div id="${alertId}" class="alert alert-${tipo} alert-dismissible fade show alert-dynamic" role="alert">
+                    <i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                    ${mensaje}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHTML);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+        
+        // Función para mostrar loading en botones
+        function mostrarLoading(buttonId) {
+            const btn = document.getElementById(buttonId);
+            if (btn) {
+                btn.classList.add('btn-loading');
+                btn.disabled = true;
+            }
+        }
+        
+        // Función para ocultar loading en botones
+        function ocultarLoading(buttonId) {
+            const btn = document.getElementById(buttonId);
+            if (btn) {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
+        }
+        
+        // Función AJAX para aprobar factura
+        function aprobarFactura(ordenId) {
+            if (!confirm("¿Estás seguro de aprobar los lotes y referencias? Esta acción no cerrará la factura.")) {
+                return;
+            }
+            
+            const facturaSelect = document.querySelector(`select[name="factura_id_${ordenId}"]`);
+            if (!facturaSelect || !facturaSelect.value) {
+                mostrarAlerta("Debes seleccionar una factura para aprobar", 'danger');
+                return;
+            }
+            
+            // Recoger referencias y lotes
+            const referencias = [];
+            const lotes = [];
+            
+            const referenciasCheckboxes = document.querySelectorAll(`input[name="referencias_oc_${ordenId}"]:checked`);
+            referenciasCheckboxes.forEach(checkbox => {
+                referencias.push(checkbox.value);
+                const loteInput = document.querySelector(`input[name="lotes_${ordenId}_${checkbox.value}"]`);
+                lotes.push(loteInput ? loteInput.value : '');
+            });
+            
+            const data = {
+                orden_id: ordenId,
+                factura_id: facturaSelect.value,
+                referencias: referencias,
+                lotes: lotes
+            };
+            
+            mostrarLoading(`btn-aprobar-${ordenId}`);
+            
+            fetch('/bodega/aprobar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                ocultarLoading(`btn-aprobar-${ordenId}`);
+                if (result.success) {
+                    mostrarAlerta(result.message, 'success');
+                    // Actualizar la fila visualmente
+                    actualizarFila(ordenId, 'aprobada');
+                } else {
+                    mostrarAlerta(result.message, 'danger');
+                }
+            })
+            .catch(error => {
+                ocultarLoading(`btn-aprobar-${ordenId}`);
+                mostrarAlerta('Error de conexión: ' + error.message, 'danger');
+            });
+        }
+        
+        // Función AJAX para cerrar factura
+        function cerrarFactura(ordenId) {
+            if (!confirm("¿Estás seguro de cerrar la factura? Esta acción es irreversible.")) {
+                return;
+            }
+            
+            const facturaSelect = document.querySelector(`select[name="factura_id_${ordenId}"]`);
+            if (!facturaSelect || !facturaSelect.value) {
+                mostrarAlerta("Debes seleccionar una factura para cerrar", 'danger');
+                return;
+            }
+            
+            const data = {
+                factura_id: facturaSelect.value
+            };
+            
+            mostrarLoading(`btn-cerrar-factura-${ordenId}`);
+            
+            fetch('/bodega/cerrar_factura', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                ocultarLoading(`btn-cerrar-factura-${ordenId}`);
+                if (result.success) {
+                    mostrarAlerta(result.message, 'success');
+                    // Actualizar la fila visualmente
+                    actualizarFila(ordenId, 'factura_cerrada');
+                } else {
+                    mostrarAlerta(result.message, 'danger');
+                }
+            })
+            .catch(error => {
+                ocultarLoading(`btn-cerrar-factura-${ordenId}`);
+                mostrarAlerta('Error de conexión: ' + error.message, 'danger');
+            });
+        }
+        
+        // Función AJAX para cerrar orden
+        function cerrarOrden(ordenId) {
+            if (!confirm("¿Estás seguro de cerrar esta orden de compra?")) {
+                return;
+            }
+            
+            const data = {
+                orden_id: ordenId
+            };
+            
+            mostrarLoading(`btn-cerrar-orden-${ordenId}`);
+            
+            fetch('/bodega/cerrar_orden', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                ocultarLoading(`btn-cerrar-orden-${ordenId}`);
+                if (result.success) {
+                    mostrarAlerta(result.message, 'success');
+                    // Actualizar la fila visualmente
+                    actualizarFila(ordenId, 'orden_cerrada');
+                } else {
+                    mostrarAlerta(result.message, 'danger');
+                }
+            })
+            .catch(error => {
+                ocultarLoading(`btn-cerrar-orden-${ordenId}`);
+                mostrarAlerta('Error de conexión: ' + error.message, 'danger');
+            });
+        }
+        
+        // Función para actualizar la fila visualmente
+        function actualizarFila(ordenId, accion) {
+            const fila = document.querySelector(`tr[data-orden-id="${ordenId}"]`);
+            if (!fila) return;
+            
+            // Actualizar estado visual según la acción
+            if (accion === 'aprobada') {
+                // Cambiar color de la fila o agregar indicador
+                fila.style.backgroundColor = '#d4edda';
+            } else if (accion === 'factura_cerrada') {
+                fila.style.backgroundColor = '#fff3cd';
+            } else if (accion === 'orden_cerrada') {
+                fila.style.backgroundColor = '#f8d7da';
+                // Deshabilitar botones
+                const botones = fila.querySelectorAll('button');
+                botones.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50');
+                });
+            }
+        }
+        
+        // Inicialización de DataTable
         $(document).ready(function() {
-            var table = $('#facturasTable').DataTable({
+            table = $('#facturasTable').DataTable({
                 paging: true,
                 searching: true,
                 lengthChange: false,
@@ -160,14 +394,14 @@
                 table.search(this.value).draw();
             });
         });
+        
         // Función para manejar los lotes dinámicamente
         $("input[name^='referencias_oc_']").on("change", function() {
-            var ordenId = $(this).data("orden-id"); // Obtener ID de orden desde el atributo data-orden-id
-            var numeroReferencia = $(this).data("referencia-numero"); // Obtener el número de referencia desde data-referencia-numero
-            var loteContainer = $("#lotes_" + ordenId); // Obtener contenedor de lotes para esta orden
+            var ordenId = $(this).data("orden-id");
+            var numeroReferencia = $(this).data("referencia-numero");
+            var loteContainer = $("#lotes_" + ordenId);
 
             if ($(this).is(":checked")) {
-                // Agregar un input para el lote si la referencia está seleccionada
                 loteContainer.append(
                     '<div class="mb-2" id="lote-container-' + ordenId + '-' + numeroReferencia + '">' +
                         '<label for="lote_' + ordenId + '_' + numeroReferencia + '">Lote de ' + numeroReferencia + ':</label>' +
@@ -175,59 +409,25 @@
                     '</div>'
                 );
             } else {
-                // Eliminar el input del lote si la referencia se desmarca
                 $("#lote-container-" + ordenId + "-" + numeroReferencia).remove();
             }
         });
 
-        // Función para validar el formulario
-        function validarFormulario() {
-            var valido = true;
-
-            // Validar si la acción es 'aprobar'
-            if ($("button[name^='aprobar_']").length) {
-                $("select[name^='factura_id']").each(function() {
-                    if (!$(this).val()) {
-                        alert("Debes seleccionar una factura para cada orden.");
-                        valido = false;
-                        return false;
-                    }
-                });
-            }
-            
-            // Para la acción de cerrar orden, solo preguntar si está seguro
-            if ($("button[name^='cerrar_orden_']").length) {
-                var confirmar = confirm("¿Estás seguro de que deseas cerrar esta orden de compra?");
-                if (!confirmar) {
-                    valido = false; // Si el usuario cancela, no se envía el formulario
-                }
-            }
-
-            return valido;
-        }
-
         // Función para mostrar los lotes dinámicamente
         function mostrarLotes(orden_id, referencia_numero) {
-            // Obtener el div de lotes correspondiente
             let lotesDiv = document.getElementById("lotes_" + orden_id);
-            
-            // Limpiar lotes antes de agregar nuevos
             lotesDiv.innerHTML = "";
 
-            // Recorrer todas las referencias seleccionadas
             let referenciasSeleccionadas = document.querySelectorAll("input[name='referencias_oc_" + orden_id + "']:checked");
             
-            // Para cada referencia seleccionada, crear un input para el lote
             referenciasSeleccionadas.forEach(function(referenciaCheckbox) {
                 let referencia_numero = referenciaCheckbox.value;
 
-                // Crear un elemento de texto o un label con el número de referencia
                 let referenciaLabel = document.createElement("label");
                 referenciaLabel.textContent = "Referencia: " + referencia_numero;
                 referenciaLabel.classList.add("form-label");
                 lotesDiv.appendChild(referenciaLabel);
 
-                // Crear un campo para ingresar el lote
                 let inputLote = document.createElement("input");
                 inputLote.type = "text";
                 inputLote.name = "lotes_" + orden_id + "_" + referencia_numero;
@@ -236,21 +436,5 @@
                 lotesDiv.appendChild(inputLote);
             });
         }
-
-        function confirmarAprobacion() {
-            if (confirm("Estás seguro de aprobar los lotes y referencias? Esta acción no cerrará la factura.")) {
-                
-                return true;
-            } else {
-               
-                return false;
-            }
-        }
-        function confirmarCierreFactura() {
-        return confirm("¿Estás seguro de cerrar la factura? Esta acción es irreversible.");
-    }
     </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}

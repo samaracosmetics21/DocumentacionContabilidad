@@ -403,6 +403,165 @@ def buscar_factura():
         return jsonify({"error": str(e)}), 500
 
 
+# ===== ENDPOINTS AJAX PARA BODEGA =====
+
+@app.route("/bodega/aprobar", methods=["POST"])
+@login_required
+def bodega_aprobar_ajax():
+    """Endpoint AJAX para aprobar facturas en bodega sin refrescar la página"""
+    try:
+        data = request.get_json()
+        orden_id = data.get('orden_id')
+        factura_id = data.get('factura_id')
+        referencias = data.get('referencias', [])
+        lotes = data.get('lotes', [])
+        usuario_id = session.get("user_id")
+        
+        if not all([orden_id, factura_id, usuario_id]):
+            return jsonify({"success": False, "message": "Datos incompletos"}), 400
+        
+        conn_pg = postgres_connection()
+        cursor_pg = conn_pg.cursor()
+        
+        # Validar permisos
+        cursor_pg.execute("""
+            SELECT g.grupo 
+            FROM usuarios u 
+            INNER JOIN grupo_aprobacion g ON u.grupo_aprobacion_id = g.id 
+            WHERE u.id = %s AND g.grupo = 'Bodega'
+        """, (usuario_id,))
+        grupo = cursor_pg.fetchone()
+        
+        if not grupo:
+            return jsonify({"success": False, "message": "No tienes permisos para aprobar facturas en Bodega"}), 403
+        
+        # Obtener nrodcto_oc
+        cursor_pg.execute("SELECT nrodcto_oc FROM ordenes_compras WHERE id = %s", (orden_id,))
+        orden = cursor_pg.fetchone()
+        
+        if not orden:
+            return jsonify({"success": False, "message": "Orden de compra no encontrada"}), 404
+        
+        nrodcto_oc = orden[0]
+        
+        # Validar factura
+        cursor_pg.execute("SELECT id FROM facturas WHERE id = %s AND estado = 'Pendiente'", (factura_id,))
+        factura = cursor_pg.fetchone()
+        
+        if not factura:
+            return jsonify({"success": False, "message": "Factura no válida o ya procesada"}), 400
+        
+        # Procesar lotes
+        lotes_oc = []
+        for i, referencia in enumerate(referencias):
+            if i < len(lotes) and lotes[i]:
+                lotes_oc.append(f"{referencia}:{lotes[i]}")
+        
+        lotes_oc_str = ",".join(lotes_oc) if lotes_oc else None
+        
+        # Actualizar factura
+        hora_aprobacion = datetime.now()
+        cursor_pg.execute("""
+            UPDATE facturas
+            SET 
+                hora_aprobacion = %s, 
+                aprobado_bodega = %s,
+                lotes_oc = %s, 
+                nrodcto_oc = %s
+            WHERE id = %s
+        """, (hora_aprobacion, usuario_id, lotes_oc_str, nrodcto_oc, factura_id))
+        
+        conn_pg.commit()
+        cursor_pg.close()
+        conn_pg.close()
+        
+        return jsonify({
+            "success": True, 
+            "message": "Factura aprobada exitosamente",
+            "hora_aprobacion": hora_aprobacion.strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+    except Exception as e:
+        print(f"Error en bodega_aprobar_ajax: {str(e)}")
+        return jsonify({"success": False, "message": f"Error interno: {str(e)}"}), 500
+
+
+@app.route("/bodega/cerrar_factura", methods=["POST"])
+@login_required
+def bodega_cerrar_factura_ajax():
+    """Endpoint AJAX para cerrar facturas sin refrescar la página"""
+    try:
+        data = request.get_json()
+        factura_id = data.get('factura_id')
+        usuario_id = session.get("user_id")
+        
+        if not all([factura_id, usuario_id]):
+            return jsonify({"success": False, "message": "Datos incompletos"}), 400
+        
+        conn_pg = postgres_connection()
+        cursor_pg = conn_pg.cursor()
+        
+        # Validar factura
+        cursor_pg.execute("SELECT id FROM facturas WHERE id = %s AND estado = 'Pendiente'", (factura_id,))
+        factura = cursor_pg.fetchone()
+        
+        if not factura:
+            return jsonify({"success": False, "message": "Factura no válida o ya procesada"}), 400
+        
+        # Cerrar factura
+        cursor_pg.execute("UPDATE facturas SET estado = 'Aprobado' WHERE id = %s", (factura_id,))
+        conn_pg.commit()
+        cursor_pg.close()
+        conn_pg.close()
+        
+        return jsonify({
+            "success": True, 
+            "message": "Factura cerrada exitosamente"
+        })
+        
+    except Exception as e:
+        print(f"Error en bodega_cerrar_factura_ajax: {str(e)}")
+        return jsonify({"success": False, "message": f"Error interno: {str(e)}"}), 500
+
+
+@app.route("/bodega/cerrar_orden", methods=["POST"])
+@login_required
+def bodega_cerrar_orden_ajax():
+    """Endpoint AJAX para cerrar órdenes de compra sin refrescar la página"""
+    try:
+        data = request.get_json()
+        orden_id = data.get('orden_id')
+        usuario_id = session.get("user_id")
+        
+        if not all([orden_id, usuario_id]):
+            return jsonify({"success": False, "message": "Datos incompletos"}), 400
+        
+        conn_pg = postgres_connection()
+        cursor_pg = conn_pg.cursor()
+        
+        # Validar orden
+        cursor_pg.execute("SELECT id FROM ordenes_compras WHERE id = %s", (orden_id,))
+        orden = cursor_pg.fetchone()
+        
+        if not orden:
+            return jsonify({"success": False, "message": "Orden de compra no encontrada"}), 404
+        
+        # Cerrar orden
+        cursor_pg.execute("UPDATE ordenes_compras SET estado = 'Cerrada' WHERE id = %s", (orden_id,))
+        conn_pg.commit()
+        cursor_pg.close()
+        conn_pg.close()
+        
+        return jsonify({
+            "success": True, 
+            "message": "Orden de compra cerrada exitosamente"
+        })
+        
+    except Exception as e:
+        print(f"Error en bodega_cerrar_orden_ajax: {str(e)}")
+        return jsonify({"success": False, "message": f"Error interno: {str(e)}"}), 500
+
+
 @app.route("/actualizar_factura", methods=["POST"])
 @login_required
 def actualizar_factura():
