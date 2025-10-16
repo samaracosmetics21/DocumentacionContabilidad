@@ -59,13 +59,13 @@ def obtener_permisos_usuario(usuario_id):
 PERMISOS_MODULOS = {
     'grupos': ['Contabilidad', 'Sistemas'],  # Contabilidad y Sistemas pueden gestionar grupos
     'usuarios': ['Contabilidad', 'Sistemas'],  # Contabilidad y Sistemas pueden gestionar usuarios
-    'gestion_inicial_mp': ['Compras', 'Sistemas'],  # Compras y Sistemas pueden gestionar órdenes de compra
-    'bodega': ['Bodega', 'Sistemas'],  # Bodega y Sistemas pueden aprobar en bodega
-    'compras': ['Compras', 'Sistemas'],  # Compras y Sistemas pueden aprobar en compras
+    'gestion_inicial_mp': ['Compras', 'Sistemas', 'Contabilidad'],  # Compras y Sistemas pueden gestionar órdenes de compra
+    'bodega': ['Bodega', 'Sistemas', 'Contabilidad'],  # Bodega y Sistemas pueden aprobar en bodega
+    'compras': ['Compras', 'Sistemas', 'Bodega', 'Contabilidad'],  # Compras y Sistemas pueden aprobar en compras
     'servicios': ['Contabilidad', 'Sistemas'],  # Contabilidad y Sistemas pueden asignar servicios
     'asignaciones': ['*'],  # Todos los usuarios pueden ver sus asignaciones
-    'pago_servicios': ['jefe_servicios', 'Sistemas'],  # Jefe de servicios y Sistemas pueden aprobar pagos de servicios
-    'pago_mp': ['jefe_mp', 'Sistemas'],  # Jefe de MP y Sistemas pueden aprobar pagos de MP
+    'pago_servicios': ['jefe_servicios', 'Sistemas', 'Contabilidad'],  # Jefe de servicios y Sistemas pueden aprobar pagos de servicios
+    'pago_mp': ['jefe_mp', 'Sistemas', 'Contabilidad'],  # Jefe de MP y Sistemas pueden aprobar pagos de MP
     'gestion_final': ['Contabilidad', 'Sistemas'],  # Contabilidad y Sistemas pueden hacer gestión final
     'tesoreria': ['Contabilidad', 'jefe_servicios', 'jefe_mp', 'tesoreria', 'Sistemas'],  # Múltiples grupos pueden acceder a tesorería
     'facturas_resumen': ['*'],  # Todos los usuarios EXCEPTO Genericos (ver función tiene_permiso)
