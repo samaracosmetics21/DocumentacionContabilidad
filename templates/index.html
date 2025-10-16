@@ -25,8 +25,9 @@
                         <input type="text" id="numero_factura" name="numero_factura" class="form-control" required style="text-transform: uppercase;">
                     </div>
                     <div class="mb-3">
-                        <label for="fecha" class="form-label">Fecha</label>
-                        <input type="date" id="fecha" name="fecha" class="form-control" required>
+                        <label for="fecha" class="form-label">Fecha <span class="text-danger">*</span></label>
+                        <input type="date" id="fecha" name="fecha" class="form-control" required max="">
+                        <div class="form-text">Seleccione la fecha de la factura (no se permiten fechas futuras)</div>
                     </div>
                     <div class="mb-3">
                         <label for="clasificacion" class="form-label">Clasificación</label>
@@ -114,6 +115,46 @@
 
 {% block extra_js %}
     <script>
+        // Configurar fecha máxima (hoy) y validaciones
+        document.addEventListener('DOMContentLoaded', function() {
+            const fechaInput = document.getElementById('fecha');
+            const editFechaInput = document.getElementById('edit_fecha');
+            
+            // Establecer fecha máxima como hoy
+            const hoy = new Date().toISOString().split('T')[0];
+            fechaInput.setAttribute('max', hoy);
+            if (editFechaInput) {
+                editFechaInput.setAttribute('max', hoy);
+            }
+            
+            // Validación adicional en tiempo real
+            fechaInput.addEventListener('change', function() {
+                const fechaSeleccionada = new Date(this.value);
+                const hoy = new Date();
+                hoy.setHours(23, 59, 59, 999); // Final del día
+                
+                if (fechaSeleccionada > hoy) {
+                    alert('⚠️ No se permiten fechas futuras. Seleccione una fecha válida.');
+                    this.value = '';
+                    this.focus();
+                }
+            });
+            
+            if (editFechaInput) {
+                editFechaInput.addEventListener('change', function() {
+                    const fechaSeleccionada = new Date(this.value);
+                    const hoy = new Date();
+                    hoy.setHours(23, 59, 59, 999);
+                    
+                    if (fechaSeleccionada > hoy) {
+                        alert('⚠️ No se permiten fechas futuras. Seleccione una fecha válida.');
+                        this.value = '';
+                        this.focus();
+                    }
+                });
+            }
+        });
+        
         function buscarClientes() {
             let nombre = document.getElementById("nombre").value.trim();
             let nit = document.getElementById("nit").value.trim();

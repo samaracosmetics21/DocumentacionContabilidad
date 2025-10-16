@@ -257,6 +257,20 @@ def index():
             archivo = request.files.get("archivo")
             observaciones = request.form.get("observaciones")
 
+            # Validar fecha
+            if not fecha_seleccionada:
+                return jsonify(success=False, message="La fecha es obligatoria"), 400
+            
+            # Validar que la fecha no sea futura
+            from datetime import date
+            try:
+                fecha_ingresada = datetime.strptime(fecha_seleccionada, '%Y-%m-%d').date()
+                fecha_hoy = date.today()
+                if fecha_ingresada > fecha_hoy:
+                    return jsonify(success=False, message="No se permiten fechas futuras"), 400
+            except ValueError:
+                return jsonify(success=False, message="Formato de fecha inválido"), 400
+
             if not archivo or not archivo.filename:
                 return jsonify(success=False, message="Debes subir un archivo"), 400
 
