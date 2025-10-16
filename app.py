@@ -2304,17 +2304,29 @@ def gestion_final():
         # Obtener las facturas aprobadas
         print("Consultando facturas aprobadas...")
         query_facturas_aprobadas = """
-            SELECT id, nit, numero_factura, fecha_seleccionada, clasificacion, archivo_path, 
-                pago_servicios, pago_mp, hora_aprobacion_pago_servicio, hora_aprobacion_pago_mp, nombre
+            SELECT 
+                id, 
+                nit, 
+                numero_factura, 
+                TO_CHAR(fecha_seleccionada, 'YYYY-MM-DD') AS fecha_seleccionada, 
+                clasificacion, 
+                archivo_path, 
+                pago_servicios, 
+                pago_mp, 
+                TO_CHAR(hora_aprobacion_pago_servicio, 'YYYY-MM-DD HH24:MI:SS') AS hora_aprobacion_pago_servicio, 
+                TO_CHAR(hora_aprobacion_pago_mp, 'YYYY-MM-DD HH24:MI:SS') AS hora_aprobacion_pago_mp, 
+                nombre
             FROM facturas
             WHERE (estado_usuario_asignado = 'Aprobado' OR estado_compras = 'Aprobado') 
             AND estado_final = 'Pendiente'
             ORDER BY id
         """
-        
+        print("/gestion_final -> Ejecutando consulta:\n", query_facturas_aprobadas)
         cursor_pg.execute(query_facturas_aprobadas)
         facturas = cursor_pg.fetchall()
-        print(f"Facturas encontradas: {len(facturas)}")
+        print(f"/gestion_final -> Filas obtenidas: {len(facturas)}")
+        if facturas:
+            print("/gestion_final -> Primera fila (muestra):", facturas[0])
 
         # BÚSQUEDA AUTOMÁTICA EN SQL SERVER
         print("Iniciando búsqueda automática en SQL Server...")
