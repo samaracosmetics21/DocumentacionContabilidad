@@ -1179,7 +1179,7 @@ def gestion_bodega():
             FROM trade
             WHERE origen = 'COM' 
             AND TIPODCTO = 'OC' 
-            AND TRIM(autorizpor) = 'NCARDONA' OR TRIM(autorizpor) = 'BMONTOYA' OR TRIM(autorizpor) = 'MCARDONA' OR TRIM(autorizpor) = 'DESTRADA'
+            AND TRIM(autorizpor) = 'NCARDONA' OR TRIM(autorizpor) = 'BMONTOYA' OR TRIM(autorizpor) = 'MCARDONA' OR TRIM(autorizpor) = 'DESTRADA' OR TRIM(autorizpor) = 'ACONTABLE'
         """)
         ordenes_aprobadas_sql = cursor_sql.fetchall()
 
