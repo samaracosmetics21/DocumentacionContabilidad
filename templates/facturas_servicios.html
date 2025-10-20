@@ -114,7 +114,7 @@
             <div>
                 <span class="badge bg-primary">{{ grupo_usuario }}</span>
             </div>
-        </div>
+    </div>
 
         {% if facturas is none %}
         <!-- Formulario de selección de fechas (se muestra cuando no hay consulta) -->
@@ -175,8 +175,8 @@
             </a>
         </div>
 
-        <div class="card">
-            <div class="card-body">
+            <div class="card">
+                <div class="card-body">
                     <!-- Campo de búsqueda -->
                     <div class="row mb-4">
                         <div class="col-md-12">
@@ -244,16 +244,19 @@
                                     <td>{{ factura[26] }}</td>
                                     <td>{{ factura[7] }}</td>
                                     <td>
+                                        <span style="display: none;">{{ factura[8] }}</span>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[8] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[8] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                     <td>{{ factura[9] }}</td>
                                     <td>
+                                        <span style="display: none;">{{ factura[10] }}</span>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[10] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[10] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                     <td>{{ factura[11] }}</td>
                                     <td>
+                                        <span style="display: none;">{{ factura[12] }}</span>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[12] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[12] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
@@ -264,9 +267,11 @@
                                         {% else %} No disponible {% endif %}
                                     </td>
                                     <td> 
+                                        <span style="display: none;">{{ factura[15] }}</span>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[15] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[15] == 'Pendiente' %}inline{% else %}none{% endif %}"></i></td>
                                     <td> 
+                                        <span style="display: none;">{{ factura[16] }}</span>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[16] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[16] == 'Pendiente' %}inline{% else %}none{% endif %}"></i></td>
                                     <td>
@@ -278,15 +283,18 @@
                                     <td>{{ factura[19] }}</td>
                                     <td>{{ factura[20] }}</td>
                                     <td>
+                                        <span style="display: none;">{{ factura[21] }}</span>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[21] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[21] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                     <td>{{ factura[22] }}</td>
                                     <td>
+                                        <span style="display: none;">{{ factura[23] }}</span>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[23] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[23] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
                                     <td>
+                                        <span style="display: none;">{{ factura[27] }}</span>
                                         <i class="fas fa-check status-icon status-approved" style="display: {% if factura[27] == 'Aprobado' %}inline{% else %}none{% endif %}"></i>
                                         <i class="fas fa-times status-icon status-denied" style="display: {% if factura[27] == 'Pendiente' %}inline{% else %}none{% endif %}"></i>
                                     </td>
@@ -367,7 +375,18 @@
             });
         });
         {% endif %}
-        
+    </script>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+    
+    <script>
         // Función para accesos rápidos de fecha
         function setRangoFecha(dias) {
             const hoy = new Date();
@@ -386,23 +405,19 @@
         }
         
         // Validar que fecha_desde no sea mayor que fecha_hasta
-        document.getElementById('formFechas')?.addEventListener('submit', function(e) {
-            const desde = document.getElementById('fecha_desde').value;
-            const hasta = document.getElementById('fecha_hasta').value;
-            
-            if (desde && hasta && desde > hasta) {
-                e.preventDefault();
-                alert('⚠️ La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
+        document.addEventListener('DOMContentLoaded', function() {
+            const formFechas = document.getElementById('formFechas');
+            if (formFechas) {
+                formFechas.addEventListener('submit', function(e) {
+                    const desde = document.getElementById('fecha_desde').value;
+                    const hasta = document.getElementById('fecha_hasta').value;
+                    
+                    if (desde && hasta && desde > hasta) {
+                        e.preventDefault();
+                        alert('⚠️ La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
+                    }
+                });
             }
         });
     </script>
-    </div>
-{% endblock %}
-
-{% block extra_js %}
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
 {% endblock %}
