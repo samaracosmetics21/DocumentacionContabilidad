@@ -361,82 +361,10 @@
                 ]
             });
 
-            // Función para aplicar filtros
-            function aplicarFiltros() {
-                var searchText = $('#search').val();
-                var fechaDesde = $('#fecha_desde').val();
-                var fechaHasta = $('#fecha_hasta').val();
-                
-                // Aplicar filtro de texto
-                table.search(searchText).draw();
-                
-                // Aplicar filtros de fecha
-                $.fn.dataTable.ext.search.pop(); // Limpiar filtros anteriores
-                
-                if (fechaDesde || fechaHasta) {
-                    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-                        var fechaSeleccionada = data[4]; // Columna de fecha (índice 4)
-                        
-                        if (!fechaSeleccionada) return true;
-                        
-                        var fecha = new Date(fechaSeleccionada);
-                        var desde = fechaDesde ? new Date(fechaDesde) : null;
-                        var hasta = fechaHasta ? new Date(fechaHasta) : null;
-                        
-                        if (desde && fecha < desde) return false;
-                        if (hasta && fecha > hasta) return false;
-                        
-                        return true;
-                    });
-                }
-                
-                table.draw();
-                actualizarInfoFiltros();
-            }
-            
-            // Función para limpiar filtros
-            function limpiarFiltros() {
-                $('#search').val('');
-                $('#fecha_desde').val('');
-                $('#fecha_hasta').val('');
-                $.fn.dataTable.ext.search.pop();
-                table.search('').draw();
-                actualizarInfoFiltros();
-            }
-            
-            // Función para actualizar información de filtros
-            function actualizarInfoFiltros() {
-                var info = table.page.info();
-                var filtered = table.rows({search: 'applied'}).count();
-                $('#info_filtros').text(`Mostrando ${filtered} de ${info.recordsTotal} registros`);
-            }
-            
-            // Eventos
+            // Búsqueda en tiempo real (simplificada)
             $('#search').on('keyup', function() {
-                aplicarFiltros();
+                table.search(this.value).draw();
             });
-            
-            $('#aplicar_filtros').on('click', function() {
-                aplicarFiltros();
-            });
-            
-            $('#limpiar_filtros').on('click', function() {
-                limpiarFiltros();
-            });
-            
-            // Validación de fechas
-            $('#fecha_desde, #fecha_hasta').on('change', function() {
-                var desde = $('#fecha_desde').val();
-                var hasta = $('#fecha_hasta').val();
-                
-                if (desde && hasta && desde > hasta) {
-                    alert('⚠️ La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
-                    $(this).val('');
-                }
-            });
-            
-            // Mostrar información inicial
-            actualizarInfoFiltros();
         });
         {% endif %}
         
