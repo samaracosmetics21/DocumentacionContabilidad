@@ -1,51 +1,63 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facturas de Servicios</title>
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    
+{% extends "base.html" %}
+
+{% block title %}Resumen de Facturas{% endblock %}
+
+{% block extra_css %}
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
     <!-- DataTables Buttons CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
-
     <!-- FontAwesome para íconos -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
     <style>
-        /* Estilo para el banner */
-        .banner {
-            background-color: #007bff;
+        /* Estilos específicos para el formulario de fechas */
+        .date-filter-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px 0;
-            text-align: center;
-            font-size: 26px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .date-filter-card .card-title {
             font-weight: bold;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
         }
-
-        /* Estilo para el menú lateral */
-        .sidebar {
-            height: 100%;
-            width: 250px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            background-color: #343a40;
-            padding-top: 20px;
+        
+        .btn-quick-access {
+            background-color: rgba(255,255,255,0.2);
             color: white;
-            z-index: 1000;
+            border: 2px solid white;
+            border-radius: 10px;
+            padding: 8px 16px;
+            margin: 5px;
+            transition: all 0.3s;
         }
-
-        .sidebar a {
+        
+        .btn-quick-access:hover {
+            background-color: white;
+            color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .form-control-white {
+            background-color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .results-badge {
+            background-color: #28a745;
             color: white;
-            padding: 12px 15px;
-            text-decoration: none;
-            display: block;
+            padding: 10px 20px;
+            border-radius: 10px;
             font-size: 1.1rem;
-            transition: background-color 0.3s;
+            display: inline-block;
+            margin-bottom: 20px;
         }
 
         .sidebar a:hover {
@@ -92,68 +104,91 @@
         }
 
     </style>
-</head>
-<body>
+{% endblock %}
 
-    <!-- Menú lateral -->
-     <!-- Menú Lateral -->
-     <div class="sidebar">
-        <h3 class="text-center text-white">Menú</h3>
-        <a href="/">Inicio</a>
-        <a href="/grupos">Grupos</a>
-        <a href="/usuarios">Usuarios</a> 
-        <a href="/gestion_inicial_mp">Gestiòn OC</a>
-        <a href="/bodega">Bodega</a>
-        <a href="/compras">Compras</a>
-        <a href="/servicios">Servicios</a>
-        <a href="/asignaciones">Mis Asignaciones</a>
-        <a href="/pago_servicios">Aprobación Servicios</a>
-        <a href="/pago_mp">Aprobación M.P</a>
-        <a href="/gestion_final">Gestión Final</a>
-        <a href="/tesoreria">Tesorería</a> 
-        <a href="/facturas_resumen">Resumen Facturas</a>
-        <a href="/logout">Logout</a>
-    </div>
-
-    <!-- Contenido principal -->
-    <div class="main-content">
-
-        <!-- Banner -->
-        <div class="banner">
-            <p>Módulo Facturas de Servicios</p>
+{% block content %}
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-file-invoice"></i> Resumen de Facturas</h1>
+            <div>
+                <span class="badge bg-primary">{{ grupo_usuario }}</span>
+            </div>
         </div>
 
-        <div class="container mt-4">
-            <h1 class="mb-4">Facturas de Servicios Pendientes</h1>
-
-            <!-- Card para la tabla de facturas -->
-            <div class="card">
-                <div class="card-body">
-                    <!-- Campos de búsqueda y filtros -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label for="search" class="form-label">Buscar Factura:</label>
-                            <input type="text" id="search" class="form-control" placeholder="Buscar por NIT, Nombre, Número de Factura...">
+        {% if facturas is none %}
+        <!-- Formulario de selección de fechas (se muestra cuando no hay consulta) -->
+        <div class="card date-filter-card">
+            <div class="card-body p-4">
+                <h3 class="card-title text-center">
+                    <i class="fas fa-calendar-alt"></i> Seleccione el Rango de Fechas
+                </h3>
+                <p class="text-center mb-4">Ingrese el período que desea consultar para visualizar las facturas</p>
+                
+                <form method="GET" action="/facturas_resumen" id="formFechas">
+                    <div class="row justify-content-center">
+                        <div class="col-md-4">
+                            <label for="fecha_desde" class="form-label"><i class="fas fa-calendar-check"></i> Fecha Desde:</label>
+                            <input type="date" class="form-control form-control-white" id="fecha_desde" name="fecha_desde" required>
                         </div>
-                        <div class="col-md-3">
-                            <label for="fecha_desde" class="form-label">Fecha Desde:</label>
-                            <input type="date" id="fecha_desde" class="form-control">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="fecha_hasta" class="form-label">Fecha Hasta:</label>
-                            <input type="date" id="fecha_hasta" class="form-control">
+                        <div class="col-md-4">
+                            <label for="fecha_hasta" class="form-label"><i class="fas fa-calendar-times"></i> Fecha Hasta:</label>
+                            <input type="date" class="form-control form-control-white" id="fecha_hasta" name="fecha_hasta" required>
                         </div>
                     </div>
                     
-                    <!-- Botones de filtro -->
-                    <div class="mb-3">
-                        <button type="button" id="aplicar_filtros" class="btn btn-primary">
-                            <i class="fas fa-filter"></i> Aplicar Filtros
-                        </button>
-                        <button type="button" id="limpiar_filtros" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Limpiar Filtros
-                        </button>
-                        <span id="info_filtros" class="badge bg-info ms-2"></span>
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <h5 class="mb-3">Accesos Rápidos:</h5>
+                            <button type="button" class="btn btn-quick-access" onclick="setRangoFecha(30)">
+                                <i class="fas fa-calendar-day"></i> Último Mes
+                            </button>
+                            <button type="button" class="btn btn-quick-access" onclick="setRangoFecha(90)">
+                                <i class="fas fa-calendar-week"></i> Últimos 3 Meses
+                            </button>
+                            <button type="button" class="btn btn-quick-access" onclick="setRangoFecha(180)">
+                                <i class="fas fa-calendar"></i> Últimos 6 Meses
+                            </button>
+                            <button type="button" class="btn btn-quick-access" onclick="setRangoFecha(365)">
+                                <i class="fas fa-calendar-alt"></i> Último Año
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <button type="submit" class="btn btn-light btn-lg px-5">
+                                <i class="fas fa-search"></i> Consultar Facturas
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <!-- Resultados (se muestra cuando hay consulta) -->
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Mostrando:</strong> {{ facturas|length }} facturas del {{ fecha_desde }} al {{ fecha_hasta }}
+            <a href="/facturas_resumen" class="btn btn-sm btn-primary float-end">
+                <i class="fas fa-redo"></i> Nueva Consulta
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                    <!-- Campo de búsqueda -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <label for="search" class="form-label">
+                                <i class="fas fa-search"></i> Buscar en Resultados:
+                            </label>
+                            <input type="text" id="search" class="form-control" 
+                                   placeholder="Buscar por NIT, Nombre, Número de Factura, Usuario, etc...">
+                            <small class="text-muted">
+                                Búsqueda instantánea en las {{ facturas|length }} facturas cargadas
+                            </small>
+                        </div>
                     </div>
 
                     <!-- Contenedor de la tabla con barra de desplazamiento -->
@@ -403,6 +438,43 @@
             // Mostrar información inicial
             actualizarInfoFiltros();
         });
+        {% endif %}
+        
+        // Función para accesos rápidos de fecha
+        function setRangoFecha(dias) {
+            const hoy = new Date();
+            const desde = new Date();
+            desde.setDate(hoy.getDate() - dias);
+            
+            const formatoFecha = (fecha) => {
+                const year = fecha.getFullYear();
+                const month = String(fecha.getMonth() + 1).padStart(2, '0');
+                const day = String(fecha.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            document.getElementById('fecha_desde').value = formatoFecha(desde);
+            document.getElementById('fecha_hasta').value = formatoFecha(hoy);
+        }
+        
+        // Validar que fecha_desde no sea mayor que fecha_hasta
+        document.getElementById('formFechas')?.addEventListener('submit', function(e) {
+            const desde = document.getElementById('fecha_desde').value;
+            const hasta = document.getElementById('fecha_hasta').value;
+            
+            if (desde && hasta && desde > hasta) {
+                e.preventDefault();
+                alert('⚠️ La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
+            }
+        });
     </script>
-</body>
-</html>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+{% endblock %}

@@ -3256,6 +3256,22 @@ def facturas_servicios():
     
     print("/facturas_resumen -> Usuario:", usuario_id, "Grupo:", grupo_usuario)
     
+    # Obtener parámetros de fecha
+    fecha_desde = request.args.get('fecha_desde')
+    fecha_hasta = request.args.get('fecha_hasta')
+    
+    print(f"/facturas_resumen -> Parámetros: fecha_desde={fecha_desde}, fecha_hasta={fecha_hasta}")
+    
+    # Si no hay fechas, mostrar formulario vacío (sin tabla)
+    if not fecha_desde or not fecha_hasta:
+        print("/facturas_resumen -> Sin fechas, mostrando formulario")
+        return render_template("facturas_servicios.html", 
+                             facturas=None,  # Indicador para mostrar formulario
+                             fecha_desde=None,
+                             fecha_hasta=None,
+                             grupo_usuario=grupo_usuario,
+                             permisos_modulos=PERMISOS_MODULOS)
+    
     conn_pg = postgres_connection()
     cursor = conn_pg.cursor()
 
@@ -3296,19 +3312,21 @@ def facturas_servicios():
             LEFT JOIN usuarios u1 ON f.aprobado_compras = u1.id  
             LEFT JOIN usuarios u2 ON f.aprobado_servicios = u2.id 
             LEFT JOIN usuarios u3 ON f.usuario_asignado_servicios = u3.id 
+            WHERE f.fecha_seleccionada BETWEEN %s AND %s
+            ORDER BY f.fecha_seleccionada DESC
         """
-        print("/facturas_resumen -> Ejecutando consulta:\n", consulta)
+        
+        print(f"/facturas_resumen -> Ejecutando consulta con rango: {fecha_desde} - {fecha_hasta}")
 
-        cursor.execute(consulta)
+        cursor.execute(consulta, (fecha_desde, fecha_hasta))
         facturas = cursor.fetchall()
-        print(f"/facturas_resumen -> Filas obtenidas: {len(facturas)}")
-        if facturas:
-            print("/facturas_resumen -> Primera fila (muestra):", facturas[0])
-        else:
-            print("/facturas_resumen -> SIN RESULTADOS")
+        
+        print(f"✅ /facturas_resumen -> Facturas encontradas: {len(facturas)}")
+        if facturas and len(facturas) > 0:
+            print(f"/facturas_resumen -> Primera fila (muestra): ID={facturas[0][-1]}, NIT={facturas[0][0]}")
         
     except Exception as e:
-        print("/facturas_resumen -> Error en consulta:", e)
+        print(f"❌ /facturas_resumen -> Error en consulta: {e}")
         flash(f"Error al consultar las facturas: {str(e)}", "error")
         facturas = []
     
@@ -3319,9 +3337,11 @@ def facturas_servicios():
             conn_pg.close()
         print("/facturas_resumen -> Conexiones cerradas")
     
-    print("/facturas_resumen -> Renderizando plantilla con filas:", len(facturas))
+    print(f"/facturas_resumen -> Renderizando plantilla con {len(facturas)} facturas")
     return render_template("facturas_servicios.html", 
                          facturas=facturas,
+                         fecha_desde=fecha_desde,
+                         fecha_hasta=fecha_hasta,
                          grupo_usuario=grupo_usuario,
                          permisos_modulos=PERMISOS_MODULOS)
 
