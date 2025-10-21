@@ -283,6 +283,12 @@
                         }
                         return data; // Para ordenamiento y búsqueda, mantener el valor original
                     }
+                },
+                {
+                    targets: [13], // Columna de Archivo - NO aplicar formato monetario
+                    render: function(data, type, row) {
+                        return data; // Mantener el contenido original (enlaces HTML)
+                    }
                 }
             ]
         });
