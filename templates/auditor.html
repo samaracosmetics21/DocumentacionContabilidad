@@ -174,7 +174,6 @@
                                     <th>Proveedor</th>
                                     <th>Factura Proveedor</th>
                                     <th>Fecha</th>
-                                    <!-- <th>Nro Documento</th> -->
                                     <th>Bruto</th>
                                     <th>IVA Bruto</th>
                                     <th>Ret. Fuente</th>
@@ -194,7 +193,6 @@
                                     <td>{{ factura[3] }}</td>
                                     <td>{{ factura[4] }}</td>
                                     <td>{{ factura[5] }}</td>
-                                    <!-- <td>{{ factura[6] }}</td> -->
                                     <td>{{ factura[8] or 0 }}</td>
                                     <td>{{ factura[9] or 0 }}</td>
                                     <td>{{ factura[10] or 0 }}</td>
@@ -276,7 +274,7 @@
             ],
             columnDefs: [
                 {
-                    targets: [6, 7, 8, 9, 10, 11, 12], // Columnas monetarias (Bruto, IVA, Retenciones, etc.)
+                    targets: [5, 6, 7, 8, 9, 10, 11], // Columnas monetarias (Bruto, IVA, Retenciones, etc.)
                     render: function(data, type, row) {
                         if (type === 'display') {
                             return formatCurrency(data);
@@ -285,9 +283,10 @@
                     }
                 },
                 {
-                    targets: [13], // Columna de Archivo - NO aplicar formato monetario
+                    targets: [12], // Columna de Archivo - NO aplicar formato monetario
                     render: function(data, type, row) {
-                        return data; // Mantener el contenido original (enlaces HTML)
+                        // No procesar el contenido HTML, mantenerlo tal como está
+                        return data;
                     }
                 }
             ]
