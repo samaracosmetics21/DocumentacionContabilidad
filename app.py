@@ -2543,8 +2543,8 @@ def gestion_final():
                         FROM TRADE
                         WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
                     """
-                elif tipodcto in ['DP', 'DN']:
-                    # Notas crédito y documentos soporte (estructura intermedia)
+                elif tipodcto == 'DP':
+                    # Notas crédito (estructura intermedia)
                     return """
                         SELECT 
                             NRODCTO, 
@@ -2558,6 +2558,23 @@ def gestion_final():
                             (BRUTO - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL
                         FROM TRADE
                         WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                    """
+                elif tipodcto == 'DN':
+                    # Documentos soporte (estructura simplificada)
+                    return """
+                        SELECT 
+                            NRODCTO, 
+                            PASSWORDIN, 
+                            BRUTO, 
+                            0 AS IVABRUTO, 
+                            0 AS VLRETFTE, 
+                            0 AS VRETICA, 
+                            0 AS VRETENIVA, 
+                            BRUTO AS SUBTOTAL, 
+                            BRUTO AS TOTAL
+                        FROM TRADE
+                        WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                        ORDER BY NRODCTO DESC
                     """
                 elif tipodcto == 'CM':
                     # Caja menor (estructura simplificada)
@@ -2597,9 +2614,49 @@ def gestion_final():
             
             try:
                 cursor_sql.execute(query_auto, (numero_factura, nit, tipodcto))
-                resultado_auto = cursor_sql.fetchone()
+                resultados_auto = cursor_sql.fetchall()
                 
-                if resultado_auto:
+                if resultados_auto:
+                    # Si hay múltiples resultados, validar antes de seleccionar
+                    if len(resultados_auto) > 1:
+                        print(f"  ⚠️ MÚLTIPLES COINCIDENCIAS encontradas para factura {factura_id}: {len(resultados_auto)} registros")
+                        print(f"  📋 Opciones disponibles:")
+                        
+                        # Mostrar todas las opciones para validación
+                        for i, resultado in enumerate(resultados_auto):
+                            print(f"    {i+1}. NRODCTO: {resultado[0]}, PASSWORDIN: {resultado[1]}, BRUTO: {resultado[2]}")
+                        
+                        # Para DN, validar que el BRUTO coincida aproximadamente con el valor esperado
+                        if tipodcto == 'DN':
+                            # Buscar el resultado con BRUTO más cercano al valor esperado
+                            valor_esperado = float(factura[5]) if len(factura) > 5 and factura[5] else 0
+                            if valor_esperado > 0:
+                                mejor_resultado = None
+                                menor_diferencia = float('inf')
+                                
+                                for resultado in resultados_auto:
+                                    bruto_resultado = float(resultado[2]) if resultado[2] else 0
+                                    diferencia = abs(bruto_resultado - valor_esperado)
+                                    
+                                    if diferencia < menor_diferencia:
+                                        menor_diferencia = diferencia
+                                        mejor_resultado = resultado
+                                
+                                if mejor_resultado:
+                                    resultado_auto = mejor_resultado
+                                    print(f"  🎯 Para DN: Seleccionando por coincidencia de BRUTO (diferencia: {menor_diferencia:.2f})")
+                                else:
+                                    resultado_auto = resultados_auto[0]
+                                    print(f"  ⚠️ Para DN: No se pudo validar BRUTO, seleccionando el más reciente")
+                            else:
+                                resultado_auto = resultados_auto[0]
+                                print(f"  ⚠️ Para DN: No hay valor esperado para validar, seleccionando el más reciente")
+                        else:
+                            # Para otros tipos, seleccionar el más reciente
+                            resultado_auto = resultados_auto[0]
+                            print(f"  ✅ Seleccionando automáticamente: NRODCTO {resultado_auto[0]}, PASSWORDIN: {resultado_auto[1]}")
+                    else:
+                        resultado_auto = resultados_auto[0]
                     print(f"  ✓ COINCIDENCIA AUTOMÁTICA ENCONTRADA para factura {factura_id}")
                     
                     # Cargar datos para el frontend
@@ -2723,7 +2780,7 @@ def gestion_final():
                                 WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
                                 ORDER BY NRODCTO
                             """
-                        elif tipodcto in ['DP', 'DN']:
+                        elif tipodcto == 'DP':
                             return """
                                 SELECT TOP 5
                                     NRODCTO, 
@@ -2735,6 +2792,23 @@ def gestion_final():
                                     ISNULL(VRETENIVA, 0) AS VRETENIVA, 
                                     BRUTO AS SUBTOTAL, 
                                     (BRUTO - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL,
+                                    LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
+                                FROM TRADE
+                                WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                                ORDER BY NRODCTO
+                            """
+                        elif tipodcto == 'DN':
+                            return """
+                                SELECT TOP 5
+                                    NRODCTO, 
+                                    PASSWORDIN, 
+                                    BRUTO, 
+                                    0 AS IVABRUTO, 
+                                    0 AS VLRETFTE, 
+                                    0 AS VRETICA, 
+                                    0 AS VRETENIVA, 
+                                    BRUTO AS SUBTOTAL, 
+                                    BRUTO AS TOTAL,
                                     LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
                                 FROM TRADE
                                 WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
