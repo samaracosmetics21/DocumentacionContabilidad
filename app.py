@@ -2726,21 +2726,36 @@ def gestion_final():
                         retenciones = convertir_valor_seguro(resultado_auto[4])  # VLRETFTE
                         valor_pagar = convertir_valor_seguro(resultado_auto[8])  # TOTAL
                         
-                        # Ejecutar UPDATE automático
+                        # Validar y truncar valores numéricos para evitar desbordamiento
+                        def validar_valor_numerico(valor, max_valor=99999999.99):
+                            if valor is None or valor == '':
+                                return 0
+                            try:
+                                valor_float = float(valor)
+                                # Truncar a 2 decimales y limitar el valor máximo
+                                valor_truncado = round(valor_float, 2)
+                                if valor_truncado > max_valor:
+                                    print(f"  ⚠️ Valor {valor_truncado} truncado a {max_valor}")
+                                    return max_valor
+                                return valor_truncado
+                            except (ValueError, TypeError):
+                                return 0
+                        
+                        # Ejecutar UPDATE automático con valores validados
                         cursor_pg.execute(update_query_auto, (
                             str(resultado_auto[0]),  # numero_ofimatica
                             str(resultado_auto[1]),  # password_in
-                            float(resultado_auto[2]) if resultado_auto[2] else 0,  # bruto
-                            float(resultado_auto[3]) if resultado_auto[3] else 0,  # iva_bruto
-                            float(resultado_auto[4]) if resultado_auto[4] else 0,  # vl_retfte
-                            float(resultado_auto[5]) if resultado_auto[5] else 0,  # v_retica
-                            float(resultado_auto[6]) if resultado_auto[6] else 0,  # v_reteniva
-                            float(resultado_auto[7]) if resultado_auto[7] else 0,  # subtotal
-                            float(resultado_auto[8]) if resultado_auto[8] else 0,  # total
+                            validar_valor_numerico(resultado_auto[2]),  # bruto
+                            validar_valor_numerico(resultado_auto[3]),  # iva_bruto
+                            validar_valor_numerico(resultado_auto[4]),  # vl_retfte
+                            validar_valor_numerico(resultado_auto[5]),  # v_retica
+                            validar_valor_numerico(resultado_auto[6]),  # v_reteniva
+                            validar_valor_numerico(resultado_auto[7]),  # subtotal
+                            validar_valor_numerico(resultado_auto[8]),  # total
                             clasificacion_final,  # clasificacion_final
                             abonos,  # abonos
-                            retenciones,  # retenciones
-                            valor_pagar,  # valor_pagar
+                            validar_valor_numerico(retenciones),  # retenciones
+                            validar_valor_numerico(valor_pagar),  # valor_pagar
                             'Aprobado',  # estado_final
                             usuario_id,  # usuario_update_final
                             factura_id   # WHERE id
