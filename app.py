@@ -1761,17 +1761,23 @@ def gestion_asignaciones():
 
             # Obtener datos del formulario
             factura_id = request.form.get("factura_id")
-            print(f"Factura recibida para aprobación: {factura_id}")
+            accion = request.form.get("accion", "aprobar").lower()
+            print(f"Factura recibida: {factura_id} | Acción solicitada: {accion}")
 
             if not factura_id or not factura_id.isdigit():
                 flash("El ID de la factura no es válido.", "error")
                 print("Error: factura_id no es válido.")
                 return redirect("/asignaciones")
 
-            # Validar que la factura pertenece al usuario actual y está pendiente
+            if accion not in ["aprobar", "rechazar"]:
+                flash("Acción no reconocida para la factura seleccionada.", "error")
+                print(f"Error: acción '{accion}' no válida.")
+                return redirect("/asignaciones")
+
+            # Validar que la factura pertenece al usuario actual
             print("Validando si la factura pertenece al usuario actual...")
             cursor.execute("""
-                SELECT id, estado_usuario_asignado
+                SELECT id, estado_usuario_asignado, estado, hora_aprobacion, aprobado_servicios
                 FROM facturas
                 WHERE id = %s AND usuario_asignado_servicios = %s
             """, (factura_id, usuario_actual_id))
@@ -1779,39 +1785,69 @@ def gestion_asignaciones():
             print(f"Resultado de la validación de factura: {factura}")
 
             if not factura:
-                flash("No tienes permiso para aprobar esta factura o ya ha sido aprobada.", "error")
+                flash("No tienes permiso para gestionar esta factura.", "error")
                 print("Error: factura no encontrada o no pertenece al usuario.")
                 return redirect("/asignaciones")
 
-            if factura[1] == 'Aprobado':
-                flash("La factura ya ha sido aprobada anteriormente.", "warning")
-                print("Advertencia: la factura ya estaba aprobada.")
-                return redirect("/asignaciones")
+            estado_actual = factura[1]
 
-            # Aprobar la factura y registrar la hora de aprobación
-            try:
-                hora_actual = datetime.now()
-                print(f"Hora de aprobación: {hora_actual}")
+            if accion == "aprobar":
+                if estado_actual == 'Aprobado':
+                    flash("La factura ya ha sido aprobada anteriormente.", "warning")
+                    print("Advertencia: la factura ya estaba aprobada.")
+                    return redirect("/asignaciones")
 
-                cursor.execute("""
-                    UPDATE facturas
-                    SET estado_usuario_asignado = 'Aprobado',
-                        hora_aprobacion_asignado = %s
-                    WHERE id = %s AND usuario_asignado_servicios = %s
-                """, (hora_actual, factura_id, usuario_actual_id))
-                conn_pg.commit()
-                print(f"Factura aprobada. Filas afectadas: {cursor.rowcount}")
+                # Aprobar la factura y registrar la hora de aprobación
+                try:
+                    hora_actual = datetime.now()
+                    print(f"Hora de aprobación: {hora_actual}")
 
-                if cursor.rowcount == 0:
-                    flash("No se pudo actualizar la factura. Verifica tus permisos.", "error")
-                    print("Error: actualización de factura fallida, fila no afectada.")
-                else:
-                    flash("Factura aprobada exitosamente.", "success")
-                    print("Factura aprobada con éxito.")
-            except Exception as e:
-                conn_pg.rollback()
-                print(f"Error durante la aprobación de la factura: {e}")
-                flash(f"Error aprobando factura: {str(e)}", "error")
+                    cursor.execute("""
+                        UPDATE facturas
+                        SET estado_usuario_asignado = 'Aprobado',
+                            hora_aprobacion_asignado = %s
+                        WHERE id = %s AND usuario_asignado_servicios = %s
+                    """, (hora_actual, factura_id, usuario_actual_id))
+                    conn_pg.commit()
+                    print(f"Factura aprobada. Filas afectadas: {cursor.rowcount}")
+
+                    if cursor.rowcount == 0:
+                        flash("No se pudo actualizar la factura. Verifica tus permisos.", "error")
+                        print("Error: actualización de factura fallida, fila no afectada.")
+                    else:
+                        flash("Factura aprobada exitosamente.", "success")
+                        print("Factura aprobada con éxito.")
+                except Exception as e:
+                    conn_pg.rollback()
+                    print(f"Error durante la aprobación de la factura: {e}")
+                    flash(f"Error aprobando factura: {str(e)}", "error")
+
+            elif accion == "rechazar":
+                # Revertir la aprobación y liberar la factura para reasignación
+                try:
+                    cursor.execute("""
+                        UPDATE facturas
+                        SET estado_usuario_asignado = 'Pendiente',
+                            hora_aprobacion_asignado = NULL,
+                            usuario_asignado_servicios = NULL,
+                            estado = 'Pendiente',
+                            hora_aprobacion = NULL,
+                            aprobado_servicios = NULL
+                        WHERE id = %s AND usuario_asignado_servicios = %s
+                    """, (factura_id, usuario_actual_id))
+                    conn_pg.commit()
+                    print(f"Factura rechazada. Filas afectadas: {cursor.rowcount}")
+
+                    if cursor.rowcount == 0:
+                        flash("No fue posible rechazar la factura. Verifica tus permisos.", "error")
+                        print("Error: rechazo de factura fallido, fila no afectada.")
+                    else:
+                        flash("Factura rechazada y devuelta para reasignación.", "success")
+                        print("Factura rechazada y devuelta a Servicios.")
+                except Exception as e:
+                    conn_pg.rollback()
+                    print(f"Error durante el rechazo de la factura: {e}")
+                    flash(f"Error al rechazar la factura: {str(e)}", "error")
 
         # Consultar facturas asignadas al usuario actual
         print("Consultando facturas asignadas al usuario actual...")

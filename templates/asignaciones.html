@@ -204,14 +204,24 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if factura[7] != 'Aprobado' %}
-                        <form method="POST" action="/asignaciones">
-                            <input type="hidden" name="factura_id" value="{{ factura[0] }}">
-                            <button type="submit" class="btn btn-success btn-sm">Aprobar</button>
-                        </form>
-                        {% else %}
-                        <button class="btn btn-secondary btn-sm" disabled>Aprobada</button>
-                        {% endif %}
+                        <div class="d-flex flex-column flex-lg-row gap-2">
+                            {% if factura[7] != 'Aprobado' %}
+                            <form method="POST" action="/asignaciones" class="flex-fill">
+                                <input type="hidden" name="factura_id" value="{{ factura[0] }}">
+                                <input type="hidden" name="accion" value="aprobar">
+                                <button type="submit" class="btn btn-success btn-sm w-100" onclick="return confirmarAprobacion('{{ factura[2] }}');">
+                                    <i class="fas fa-check-circle me-1"></i> Aprobar
+                                </button>
+                            </form>
+                            {% endif %}
+                            <form method="POST" action="/asignaciones" class="flex-fill">
+                                <input type="hidden" name="factura_id" value="{{ factura[0] }}">
+                                <input type="hidden" name="accion" value="rechazar">
+                                <button type="submit" class="btn btn-danger btn-sm w-100" onclick="return confirmarRechazo('{{ factura[2] }}');">
+                                    <i class="fas fa-undo me-1"></i> Rechazar
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -322,5 +332,13 @@
             // Inicializar contador
             filterRows();
         });
+
+        function confirmarAprobacion(numeroFactura) {
+            return confirm(`¿Deseas aprobar la factura ${numeroFactura}?`);
+        }
+
+        function confirmarRechazo(numeroFactura) {
+            return confirm(`¿Deseas rechazar y liberar la factura ${numeroFactura}? Esta acción la devolverá al equipo de Contabilidad.`);
+        }
     </script>
 {% endblock %}
