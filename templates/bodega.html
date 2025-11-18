@@ -3,14 +3,14 @@
 {% block title %}Gestión de Bodega{% endblock %}
 
 {% block extra_css %}
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
+     <!-- DataTables CSS -->
+     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
     <!-- FontAwesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
+     <style>
         .card {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                }
         .btn-loading {
             position: relative;
             pointer-events: none;
@@ -64,7 +64,7 @@
         <!-- Alertas dinámicas -->
         <div id="alert-container"></div>
         
-        <div class="card">
+         <div class="card">
             <div class="card-body">
                 <!-- Formulario convertido a AJAX -->
                 <div id="bodega-form">
@@ -166,9 +166,9 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                </div>
-
             </div>
+
+         </div>   
         </div>   
     </div>
 {% endblock %}
@@ -435,6 +435,6 @@
                 inputLote.classList.add("form-control");
                 lotesDiv.appendChild(inputLote);
             });
-        }
+    }
     </script>
 {% endblock %}

@@ -1793,34 +1793,34 @@ def gestion_asignaciones():
 
             if accion == "aprobar":
                 if estado_actual == 'Aprobado':
-                    flash("La factura ya ha sido aprobada anteriormente.", "warning")
-                    print("Advertencia: la factura ya estaba aprobada.")
-                    return redirect("/asignaciones")
+                flash("La factura ya ha sido aprobada anteriormente.", "warning")
+                print("Advertencia: la factura ya estaba aprobada.")
+                return redirect("/asignaciones")
 
-                # Aprobar la factura y registrar la hora de aprobación
-                try:
-                    hora_actual = datetime.now()
-                    print(f"Hora de aprobación: {hora_actual}")
+            # Aprobar la factura y registrar la hora de aprobación
+            try:
+                hora_actual = datetime.now()
+                print(f"Hora de aprobación: {hora_actual}")
 
-                    cursor.execute("""
-                        UPDATE facturas
-                        SET estado_usuario_asignado = 'Aprobado',
-                            hora_aprobacion_asignado = %s
-                        WHERE id = %s AND usuario_asignado_servicios = %s
-                    """, (hora_actual, factura_id, usuario_actual_id))
-                    conn_pg.commit()
-                    print(f"Factura aprobada. Filas afectadas: {cursor.rowcount}")
+                cursor.execute("""
+                    UPDATE facturas
+                    SET estado_usuario_asignado = 'Aprobado',
+                        hora_aprobacion_asignado = %s
+                    WHERE id = %s AND usuario_asignado_servicios = %s
+                """, (hora_actual, factura_id, usuario_actual_id))
+                conn_pg.commit()
+                print(f"Factura aprobada. Filas afectadas: {cursor.rowcount}")
 
-                    if cursor.rowcount == 0:
-                        flash("No se pudo actualizar la factura. Verifica tus permisos.", "error")
-                        print("Error: actualización de factura fallida, fila no afectada.")
-                    else:
-                        flash("Factura aprobada exitosamente.", "success")
-                        print("Factura aprobada con éxito.")
-                except Exception as e:
-                    conn_pg.rollback()
-                    print(f"Error durante la aprobación de la factura: {e}")
-                    flash(f"Error aprobando factura: {str(e)}", "error")
+                if cursor.rowcount == 0:
+                    flash("No se pudo actualizar la factura. Verifica tus permisos.", "error")
+                    print("Error: actualización de factura fallida, fila no afectada.")
+                else:
+                    flash("Factura aprobada exitosamente.", "success")
+                    print("Factura aprobada con éxito.")
+            except Exception as e:
+                conn_pg.rollback()
+                print(f"Error durante la aprobación de la factura: {e}")
+                flash(f"Error aprobando factura: {str(e)}", "error")
 
             elif accion == "rechazar":
                 # Revertir la aprobación y liberar la factura para reasignación
@@ -2566,14 +2566,14 @@ def gestion_final():
                 if tipodcto in ['FR', 'FS', 'FG']:
                     # Documentos con estructura completa (facturas)
                     return """
-                        SELECT 
-                            NRODCTO, 
-                            PASSWORDIN, 
-                            BRUTO, 
-                            IVABRUTO, 
-                            VLRETFTE, 
-                            VRETICA, 
-                            VRETENIVA, 
+                SELECT 
+                    NRODCTO, 
+                    PASSWORDIN, 
+                    BRUTO, 
+                    IVABRUTO, 
+                    VLRETFTE, 
+                    VRETICA, 
+                    VRETENIVA, 
                             (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
                             ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL
                         FROM TRADE
@@ -2613,18 +2613,18 @@ def gestion_final():
                         ORDER BY NRODCTO DESC
                     """
                 elif tipodcto == 'CM':
-                    # Caja menor (estructura simplificada)
+                    # Caja menor (estructura con IVA real)
                     return """
                         SELECT 
                             NRODCTO, 
                             PASSWORDIN, 
                             BRUTO, 
-                            0 AS IVABRUTO, 
-                            0 AS VLRETFTE, 
-                            0 AS VRETICA, 
-                            0 AS VRETENIVA, 
-                            BRUTO AS SUBTOTAL, 
-                            BRUTO AS TOTAL
+                            ISNULL(IVABRUTO, 0) AS IVABRUTO, 
+                            ISNULL(VLRETFTE, 0) AS VLRETFTE, 
+                            ISNULL(VRETICA, 0) AS VRETICA, 
+                            ISNULL(VRETENIVA, 0) AS VRETENIVA, 
+                            (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
+                            ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL
                         FROM TRADE
                         WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
                     """
@@ -2641,9 +2641,9 @@ def gestion_final():
                             VRETENIVA, 
                             (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
                             ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL
-                        FROM TRADE
-                        WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
-                    """
+                FROM TRADE
+                WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+            """
             
             # Búsqueda automática en SQL Server usando dctoprv
             query_auto = generar_consulta_sql(tipodcto)
@@ -2816,14 +2816,14 @@ def gestion_final():
                     def generar_consulta_multiple(tipodcto):
                         if tipodcto in ['FR', 'FS', 'FG']:
                             return """
-                                SELECT TOP 5
-                                    NRODCTO, 
-                                    PASSWORDIN, 
-                                    BRUTO, 
-                                    IVABRUTO, 
-                                    VLRETFTE, 
-                                    VRETICA, 
-                                    VRETENIVA, 
+                        SELECT TOP 5
+                            NRODCTO, 
+                            PASSWORDIN, 
+                            BRUTO, 
+                            IVABRUTO, 
+                            VLRETFTE, 
+                            VRETICA, 
+                            VRETENIVA, 
                                     (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
                                     ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL,
                                     LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
@@ -2871,12 +2871,12 @@ def gestion_final():
                                     NRODCTO, 
                                     PASSWORDIN, 
                                     BRUTO, 
-                                    0 AS IVABRUTO, 
-                                    0 AS VLRETFTE, 
-                                    0 AS VRETICA, 
-                                    0 AS VRETENIVA, 
-                                    BRUTO AS SUBTOTAL, 
-                                    BRUTO AS TOTAL,
+                                    ISNULL(IVABRUTO, 0) AS IVABRUTO, 
+                                    ISNULL(VLRETFTE, 0) AS VLRETFTE, 
+                                    ISNULL(VRETICA, 0) AS VRETICA, 
+                                    ISNULL(VRETENIVA, 0) AS VRETENIVA, 
+                                    (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
+                                    ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL,
                                     LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
                                 FROM TRADE
                                 WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
@@ -2894,46 +2894,46 @@ def gestion_final():
                                     VRETENIVA, 
                                     (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
                                     ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL,
-                                    LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
-                                FROM TRADE
-                                WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
-                                ORDER BY NRODCTO
-                            """
+                            LTRIM(RTRIM(dctoprv)) as dctoprv_limpio
+                        FROM TRADE
+                        WHERE NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+                        ORDER BY NRODCTO
+                    """
                     
                     query_multiple = generar_consulta_multiple(tipodcto)
                     
                     try:
-                        cursor_sql.execute(query_multiple, (nit, tipodcto))
-                        resultados_multiple = cursor_sql.fetchall()
-                        
-                        if resultados_multiple:
-                            print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
-                            requieren_manual += 1
-                            # Convertir a lista de diccionarios para JSON
-                            opciones_list = []
-                            for resultado in resultados_multiple:
-                                opciones_list.append({
-                                    "nrodcto": str(resultado[0]),
-                                    "passwordin": str(resultado[1]),
-                                    "bruto": float(resultado[2]) if resultado[2] else 0,
-                                    "ivabruto": float(resultado[3]) if resultado[3] else 0,
-                                    "vlretfte": float(resultado[4]) if resultado[4] else 0,
-                                    "vretica": float(resultado[5]) if resultado[5] else 0,
-                                    "vreteniva": float(resultado[6]) if resultado[6] else 0,
-                                    "subtotal": float(resultado[7]) if resultado[7] else 0,
-                                    "total": float(resultado[8]) if resultado[8] else 0,
-                                    "dctoprv": str(resultado[9]) if resultado[9] else ""
-                                })
-                            ofimatica_data[factura_id] = {
-                                "opciones_multiple": opciones_list,
-                                "auto_cargado": False
-                            }
-                        else:
-                            print(f"  ✗ No se encontraron registros para factura {factura_id}")
-                            requieren_manual += 1
-                            ofimatica_data[factura_id] = {
-                                "auto_cargado": False,
-                                "sin_registros": True
+                    cursor_sql.execute(query_multiple, (nit, tipodcto))
+                    resultados_multiple = cursor_sql.fetchall()
+                    
+                    if resultados_multiple:
+                        print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
+                        requieren_manual += 1
+                        # Convertir a lista de diccionarios para JSON
+                        opciones_list = []
+                        for resultado in resultados_multiple:
+                            opciones_list.append({
+                                "nrodcto": str(resultado[0]),
+                                "passwordin": str(resultado[1]),
+                                "bruto": float(resultado[2]) if resultado[2] else 0,
+                                "ivabruto": float(resultado[3]) if resultado[3] else 0,
+                                "vlretfte": float(resultado[4]) if resultado[4] else 0,
+                                "vretica": float(resultado[5]) if resultado[5] else 0,
+                                "vreteniva": float(resultado[6]) if resultado[6] else 0,
+                                "subtotal": float(resultado[7]) if resultado[7] else 0,
+                                "total": float(resultado[8]) if resultado[8] else 0,
+                                "dctoprv": str(resultado[9]) if resultado[9] else ""
+                            })
+                        ofimatica_data[factura_id] = {
+                            "opciones_multiple": opciones_list,
+                            "auto_cargado": False
+                        }
+                    else:
+                        print(f"  ✗ No se encontraron registros para factura {factura_id}")
+                        requieren_manual += 1
+                        ofimatica_data[factura_id] = {
+                            "auto_cargado": False,
+                            "sin_registros": True
                             }
                     except Exception as e:
                         print(f"  ⚠ Error en búsqueda de opciones múltiples para factura {factura_id}: {e}")
@@ -3445,7 +3445,7 @@ def facturas_servicios():
 
         cursor.execute(consulta, (fecha_desde, fecha_hasta))
         facturas = cursor.fetchall()
-        
+
         print(f"✅ /facturas_resumen -> Facturas encontradas: {len(facturas)}")
         if facturas and len(facturas) > 0:
             print(f"/facturas_resumen -> Primera fila (muestra): ID={facturas[0][-1]}, NIT={facturas[0][0]}")
@@ -3454,14 +3454,14 @@ def facturas_servicios():
         print(f"❌ /facturas_resumen -> Error en consulta: {e}")
         flash(f"Error al consultar las facturas: {str(e)}", "error")
         facturas = []
-    
+
     finally:
         if cursor:
             cursor.close()
         if conn_pg:
             conn_pg.close()
         print("/facturas_resumen -> Conexiones cerradas")
-    
+
     print(f"/facturas_resumen -> Renderizando plantilla con {len(facturas)} facturas")
     return render_template("facturas_servicios.html", 
                          facturas=facturas,
@@ -3638,11 +3638,11 @@ def gestion_inicial():
         except Exception as e:
             flash(f"Error al guardar en PostgreSQL: {str(e)}", "error")
             return redirect(request.url)
-    
+        
     try:
         # Consultar las órdenes de compra para mostrar en la plantilla
-        cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
-        ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
+    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
+    ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
     except Exception as e:
         print(f"Error consultando órdenes de compra: {e}")
         flash(f"Error al consultar las órdenes de compra: {str(e)}", "error")
