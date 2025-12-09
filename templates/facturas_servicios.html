@@ -263,7 +263,7 @@
                                     <td>{{ factura[13] }}</td>
                                     <td>
                                         {% if factura[14] %}
-                                        <a href="{{ url_for('static', filename= 'uploads/' + factura[14].replace('\\', '/')) }}" target="_blank" class="file-link">Ver Orden de Compra</a>
+                                        {{ factura[14] }}
                                         {% else %} No disponible {% endif %}
                                     </td>
                                     <td> 

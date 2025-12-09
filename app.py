@@ -3444,7 +3444,7 @@ def facturas_servicios():
                 TO_CHAR(f.hora_aprobacion_compras, 'YYYY-MM-DD HH24:MI:SS') as hora_aprobacion_compras,
                 COALESCE(u1.usuario, '') as usuario_aprueba_compras, 
                 f.remision,
-                f.archivo_remision as orden_compra,
+                f.nrodcto_oc as orden_compra,
                 f.pago_mp as estado_aprobacion_jefe_mp, 
                 f.estado_final as estado_final_contabilizado,
                 f.archivo_pdf as archivo_pago_banco, 
