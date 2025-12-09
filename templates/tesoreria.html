@@ -141,24 +141,13 @@
                     <h5>Documentos a vincular:</h5>
                     <form id="documentosForm" method="POST" action="{{ url_for('guardar_documentos') }}">
                         <input type="hidden" name="archivo_path" value="{{ archivo_path }}">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Seleccionar</th>
-                                    <th>Comprobante Egreso</th>
-                                    <th>N° Factura</th>
-                                    <th>Fecha</th>
-                                    <th>Cheque</th>
-                                    <th>NIT</th>
-                                    <th>Nombre</th>
-                                    <th>Valor</th>
-                                </tr>
-                            </thead>
-                            <tbody id="documentos-body">
-                                
-                            </tbody>
-                        </table>
-                        <button type="submit" class="btn btn-success" onclick="return confirmarAprobacion();">Vincular documentos</button>
+                        
+                        <!-- Acordeón de Bootstrap para agrupar por mes -->
+                        <div class="accordion" id="accordionDocumentos">
+                            <!-- Los acordeones se generarán dinámicamente aquí -->
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success mt-3" onclick="return confirmarAprobacion();">Vincular documentos seleccionados</button>
                     </form>
                 </div>
 
@@ -211,32 +200,81 @@
                     $("input[name='archivo_path']").val(response.archivo_path);
 
                     // Mostrar el número de documentos
-                    $('#num-documentos').text(`Número de documentos encontrados: ${response.num_documentos}`);
-                    $('#num-documentos').show();  // Asegúrate de mostrar este mensaje.
+                    $('#num-documentos').text(`Número de documentos encontrados: ${response.num_documentos} en ${response.num_meses} mes(es)`);
+                    $('#num-documentos').show();
 
-                    // Limpiar y mostrar los documentos en la tabla
-                    $('#documentos-body').empty(); // Limpiar cualquier contenido previo
+                    // Limpiar y mostrar los documentos agrupados por mes
+                    $('#accordionDocumentos').empty(); // Limpiar cualquier contenido previo
 
-                    if (response.documentos.length > 0) {
-                        response.documentos.forEach(function(documento) {
-                            // Mostrar cada documento en la tabla
-                            $('#documentos-body').append(`
-                                <tr>
-                                    <td><input type="checkbox" name="dcto" value="${documento.dcto}" data-factura="${documento.factura}" id="dcto_${documento.dcto}"></td>
-                                    <td>${documento.dcto}</td>
-                                    <td>${documento.factura}</td>
-                                    <td>${documento.fecha}</td>
-                                    <td>${documento.cheque}</td>
-                                    <td>${documento.nit}</td>
-                                    <td>${documento.nombre_tercero}</td>
-                                    <td>${documento.valor}</td>
-                                </tr>
-                            `);
+                    if (response.documentos_por_mes && Object.keys(response.documentos_por_mes).length > 0) {
+                        let accordionIndex = 0;
+                        
+                        // Iterar sobre cada mes
+                        Object.keys(response.documentos_por_mes).forEach(function(claveMes) {
+                            const grupo = response.documentos_por_mes[claveMes];
+                            const numDocs = grupo.documentos.length;
+                            const accordionId = `accordion-${accordionIndex}`;
+                            const collapseId = `collapse-${accordionIndex}`;
+                            
+                            // Crear el header del acordeón
+                            const accordionHeader = `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading-${accordionIndex}">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                                data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
+                                            <strong>${grupo.mes}</strong> <span class="badge bg-primary ms-2">${numDocs} documento(s)</span>
+                                        </button>
+                                    </h2>
+                                    <div id="${collapseId}" class="accordion-collapse collapse" 
+                                         aria-labelledby="heading-${accordionIndex}" data-bs-parent="#accordionDocumentos">
+                                        <div class="accordion-body">
+                                            <table class="table table-bordered table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Seleccionar</th>
+                                                        <th>Comprobante Egreso</th>
+                                                        <th>N° Factura</th>
+                                                        <th>Fecha</th>
+                                                        <th>Cheque</th>
+                                                        <th>NIT</th>
+                                                        <th>Nombre</th>
+                                                        <th>Valor</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tbody-${accordionIndex}">
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            $('#accordionDocumentos').append(accordionHeader);
+                            
+                            // Agregar los documentos de este mes a la tabla
+                            grupo.documentos.forEach(function(documento) {
+                                $(`#tbody-${accordionIndex}`).append(`
+                                    <tr>
+                                        <td><input type="checkbox" name="dcto" value="${documento.dcto}" data-factura="${documento.factura}" id="dcto_${documento.dcto}"></td>
+                                        <td>${documento.dcto}</td>
+                                        <td>${documento.factura}</td>
+                                        <td>${documento.fecha}</td>
+                                        <td>${documento.cheque}</td>
+                                        <td>${documento.nit}</td>
+                                        <td>${documento.nombre_tercero}</td>
+                                        <td>${documento.valor}</td>
+                                    </tr>
+                                `);
+                            });
+                            
+                            accordionIndex++;
                         });
-                        // Mostrar la tabla de documentos
+                        
+                        // Mostrar el contenedor de documentos
                         $('#documentos-container').show();
                     } else {
-                        $('#documentos-body').append('<tr><td colspan="6">No se encontraron documentos.</td></tr>');
+                        $('#accordionDocumentos').append('<div class="alert alert-warning">No se encontraron documentos.</div>');
+                        $('#documentos-container').show();
                     }
                 },
                 error: function(error) {

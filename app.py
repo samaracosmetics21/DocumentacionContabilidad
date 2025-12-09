@@ -3231,7 +3231,7 @@ def tesoreria():
                     LTRIM(RTRIM(mtprocli.nombre)) AS nombre_tercero
                 FROM ABOCXP
                 INNER JOIN mtprocli ON ABOCXP.nit = mtprocli.NIT
-                WHERE fecha >= DATEADD(DAY, -30, GETDATE())
+                WHERE fecha >= DATEADD(DAY, -365, GETDATE())
                 AND tipodcto = 'CE'
                 ORDER BY factura;
             """
@@ -3248,28 +3248,106 @@ def tesoreria():
 
             print(f"Documentos encontrados: {len(documentos)}")
 
-            # Procesamos los documentos para pasarlos a la plantilla
-            documentos_encontrados = [{
-                "dcto": dcto,
-                "fecha": fecha,
-                "cheque": cheque,
-                "nit": nit,
-                "passwordin": passwordin,
-                "valor": valor,
-                "tipodcto": tipodcto,
-                "factura": factura,
-                "nombre_tercero": nombre_tercero
-            } for dcto, fecha, cheque, nit, passwordin, valor, tipodcto, factura, nombre_tercero in documentos]
+            # Procesamos los documentos y los agrupamos por mes/año
+            documentos_por_mes = {}
+            meses_espanol = {
+                1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+                5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+                9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+            }
+            
+            for dcto, fecha, cheque, nit, passwordin, valor, tipodcto, factura, nombre_tercero in documentos:
+                # Crear objeto documento
+                documento = {
+                    "dcto": dcto,
+                    "fecha": fecha,
+                    "cheque": cheque,
+                    "nit": nit,
+                    "passwordin": passwordin,
+                    "valor": valor,
+                    "tipodcto": tipodcto,
+                    "factura": factura,
+                    "nombre_tercero": nombre_tercero
+                }
+                
+                # Parsear la fecha para obtener mes y año
+                try:
+                    # La fecha puede venir como string o como objeto datetime desde SQL Server
+                    fecha_parseada = None
+                    if isinstance(fecha, str):
+                        # Intentar diferentes formatos de fecha comunes en SQL Server
+                        fecha_limpia = fecha.strip()
+                        formatos_fecha = [
+                            '%Y-%m-%d',           # 2024-11-15
+                            '%Y-%m-%d %H:%M:%S', # 2024-11-15 10:30:00
+                            '%d/%m/%Y',          # 15/11/2024
+                            '%Y/%m/%d',          # 2024/11/15
+                            '%m/%d/%Y',          # 11/15/2024
+                            '%d-%m-%Y',          # 15-11-2024
+                        ]
+                        for fmt in formatos_fecha:
+                            try:
+                                fecha_parseada = datetime.strptime(fecha_limpia, fmt)
+                                break
+                            except:
+                                continue
+                        if not fecha_parseada:
+                            # Si no se puede parsear, usar fecha actual como fallback
+                            print(f"⚠️ No se pudo parsear fecha: {fecha}, usando fecha actual")
+                            fecha_parseada = datetime.now()
+                    elif hasattr(fecha, 'year') and hasattr(fecha, 'month'):
+                        # Si ya es un objeto datetime
+                        fecha_parseada = fecha
+                    else:
+                        # Fallback a fecha actual
+                        print(f"⚠️ Formato de fecha desconocido: {type(fecha)}, usando fecha actual")
+                        fecha_parseada = datetime.now()
+                    
+                    año = fecha_parseada.year
+                    mes = fecha_parseada.month
+                    clave_mes = f"{año}-{mes:02d}"
+                    nombre_mes = f"{meses_espanol[mes]} {año}"
+                    
+                    # Agrupar por mes
+                    if clave_mes not in documentos_por_mes:
+                        documentos_por_mes[clave_mes] = {
+                            "mes": nombre_mes,
+                            "clave": clave_mes,
+                            "documentos": []
+                        }
+                    
+                    documentos_por_mes[clave_mes]["documentos"].append(documento)
+                    
+                except Exception as e:
+                    print(f"Error parseando fecha {fecha}: {e}")
+                    # Si hay error, poner en un mes "Sin fecha"
+                    clave_mes = "sin-fecha"
+                    if clave_mes not in documentos_por_mes:
+                        documentos_por_mes[clave_mes] = {
+                            "mes": "Sin fecha",
+                            "clave": clave_mes,
+                            "documentos": []
+                        }
+                    documentos_por_mes[clave_mes]["documentos"].append(documento)
 
+            # Ordenar los meses de más reciente a más antiguo
+            meses_ordenados = sorted(documentos_por_mes.keys(), reverse=True)
+            documentos_ordenados = {clave: documentos_por_mes[clave] for clave in meses_ordenados if clave != "sin-fecha"}
+            if "sin-fecha" in documentos_por_mes:
+                documentos_ordenados["sin-fecha"] = documentos_por_mes["sin-fecha"]
+
+            # Calcular total de documentos
+            total_documentos = sum(len(grupo["documentos"]) for grupo in documentos_ordenados.values())
 
             # Mostrar los documentos encontrados antes de enviarlos
-            print(f"Documentos procesados para plantilla: {len(documentos_encontrados)}")
+            print(f"Documentos procesados: {total_documentos} en {len(documentos_ordenados)} meses")
 
             # Asegurarse de que la respuesta sea un JSON
             return jsonify({
-                "documentos": documentos_encontrados,
+                "documentos_por_mes": documentos_ordenados,
                 "archivo_path": archivo_path,
-                "num_documentos": len(documentos_encontrados)
+                "num_documentos": total_documentos,
+                "num_meses": len(documentos_ordenados)
             })
 
         except Exception as e:
