@@ -381,7 +381,7 @@ def buscar_factura():
     try:
         conn_pg = postgres_connection()
         cursor_pg = conn_pg.cursor()
-        cursor_pg.execute("SELECT id, nit, nombre, numero_factura, fecha_seleccionada, clasificacion, archivo_path, observaciones_regis FROM facturas WHERE id = %s", (factura_id,))
+        cursor_pg.execute("SELECT id, nit, nombre, numero_factura, fecha_seleccionada, clasificacion, archivo_path, observaciones_regis, nrodcto_oc FROM facturas WHERE id = %s", (factura_id,))
         row = cursor_pg.fetchone()
 
         if row:
@@ -393,7 +393,8 @@ def buscar_factura():
                 "fecha_seleccionada": row[4].strftime("%Y-%m-%d"),
                 "clasificacion": row[5],
                 "archivo_path": row[6],
-                "observaciones_regis": row[7]
+                "observaciones_regis": row[7],
+                "nrodcto_oc": row[8] if row[8] is not None else None
             }
             return jsonify(factura)
         else:
@@ -573,7 +574,11 @@ def actualizar_factura():
         clasificacion = request.form.get("clasificacion")
         observaciones = request.form.get("observaciones")
         archivo = request.files.get("archivo")
+        nrodcto_oc = request.form.get("nrodcto_oc", "").strip()
         clasificacion_texto = "Facturas" if clasificacion == "1" else "Servicios"
+        
+        # Convertir nrodcto_oc a entero si tiene valor, sino None
+        nrodcto_oc_value = int(nrodcto_oc) if nrodcto_oc and nrodcto_oc.isdigit() else None
 
         if not factura_id:
             return jsonify({"error": "ID de factura no proporcionado"}), 400
@@ -607,12 +612,12 @@ def actualizar_factura():
             UPDATE facturas
             SET nit = %s, nombre = %s, numero_factura = %s,
                 fecha_seleccionada = %s, clasificacion = %s,
-                observaciones_regis = %s
+                observaciones_regis = %s, nrodcto_oc = %s
                 {archivo_sql}
             WHERE id = %s
         """.format(archivo_sql=", archivo_path = %s" if ruta_relativa else "")
 
-        params = [nit, nombre, numero_factura, fecha, clasificacion_texto, observaciones]
+        params = [nit, nombre, numero_factura, fecha, clasificacion_texto, observaciones, nrodcto_oc_value]
         if ruta_relativa:
             params.append(ruta_relativa)
         params.append(factura_id)
@@ -1793,34 +1798,34 @@ def gestion_asignaciones():
 
             if accion == "aprobar":
                 if estado_actual == 'Aprobado':
-                    flash("La factura ya ha sido aprobada anteriormente.", "warning")
-                    print("Advertencia: la factura ya estaba aprobada.")
-                    return redirect("/asignaciones")
+                flash("La factura ya ha sido aprobada anteriormente.", "warning")
+                print("Advertencia: la factura ya estaba aprobada.")
+                return redirect("/asignaciones")
 
-                # Aprobar la factura y registrar la hora de aprobación
-                try:
-                    hora_actual = datetime.now()
-                    print(f"Hora de aprobación: {hora_actual}")
+            # Aprobar la factura y registrar la hora de aprobación
+            try:
+                hora_actual = datetime.now()
+                print(f"Hora de aprobación: {hora_actual}")
 
-                    cursor.execute("""
-                        UPDATE facturas
-                        SET estado_usuario_asignado = 'Aprobado',
-                            hora_aprobacion_asignado = %s
-                        WHERE id = %s AND usuario_asignado_servicios = %s
-                    """, (hora_actual, factura_id, usuario_actual_id))
-                    conn_pg.commit()
-                    print(f"Factura aprobada. Filas afectadas: {cursor.rowcount}")
+                cursor.execute("""
+                    UPDATE facturas
+                    SET estado_usuario_asignado = 'Aprobado',
+                        hora_aprobacion_asignado = %s
+                    WHERE id = %s AND usuario_asignado_servicios = %s
+                """, (hora_actual, factura_id, usuario_actual_id))
+                conn_pg.commit()
+                print(f"Factura aprobada. Filas afectadas: {cursor.rowcount}")
 
-                    if cursor.rowcount == 0:
-                        flash("No se pudo actualizar la factura. Verifica tus permisos.", "error")
-                        print("Error: actualización de factura fallida, fila no afectada.")
-                    else:
-                        flash("Factura aprobada exitosamente.", "success")
-                        print("Factura aprobada con éxito.")
-                except Exception as e:
-                    conn_pg.rollback()
-                    print(f"Error durante la aprobación de la factura: {e}")
-                    flash(f"Error aprobando factura: {str(e)}", "error")
+                if cursor.rowcount == 0:
+                    flash("No se pudo actualizar la factura. Verifica tus permisos.", "error")
+                    print("Error: actualización de factura fallida, fila no afectada.")
+                else:
+                    flash("Factura aprobada exitosamente.", "success")
+                    print("Factura aprobada con éxito.")
+            except Exception as e:
+                conn_pg.rollback()
+                print(f"Error durante la aprobación de la factura: {e}")
+                flash(f"Error aprobando factura: {str(e)}", "error")
 
             elif accion == "rechazar":
                 # Revertir la aprobación y liberar la factura para reasignación
@@ -2561,6 +2566,11 @@ def gestion_final():
             
             print(f"Buscando automáticamente: NIT={nit}, Factura='{numero_factura}', Tipo={tipodcto} ({clasificacion})")
             
+            # Logging especial para CM
+            if tipodcto == 'CM':
+                print(f"  🔍 [CM] Iniciando búsqueda para Caja Menor")
+                print(f"  🔍 [CM] Parámetros: dctoprv='{numero_factura}', NIT='{nit}', TIPODCTO='CM'")
+            
             # Generar consulta adaptativa según el tipo de documento
             def generar_consulta_sql(tipodcto):
                 if tipodcto in ['FR', 'FS', 'FG']:
@@ -2649,8 +2659,21 @@ def gestion_final():
             query_auto = generar_consulta_sql(tipodcto)
             
             try:
+                # Logging especial para CM antes de ejecutar
+                if tipodcto == 'CM':
+                    print(f"  🔍 [CM] Ejecutando consulta con parámetros: ('{numero_factura}', '{nit}', 'CM')")
+                    print(f"  🔍 [CM] Query: {query_auto[:200]}...")  # Primeros 200 caracteres
+                
                 cursor_sql.execute(query_auto, (numero_factura, nit, tipodcto))
                 resultados_auto = cursor_sql.fetchall()
+                
+                # Logging especial para CM después de ejecutar
+                if tipodcto == 'CM':
+                    print(f"  🔍 [CM] Resultados encontrados: {len(resultados_auto)}")
+                    if resultados_auto:
+                        print(f"  🔍 [CM] Primer resultado: NRODCTO={resultados_auto[0][0]}, BRUTO={resultados_auto[0][2]}, IVABRUTO={resultados_auto[0][3]}")
+                    else:
+                        print(f"  ❌ [CM] No se encontraron resultados para dctoprv='{numero_factura}', NIT='{nit}'")
                 
                 if resultados_auto:
                     # Si hay múltiples resultados, validar antes de seleccionar
@@ -2903,37 +2926,37 @@ def gestion_final():
                     query_multiple = generar_consulta_multiple(tipodcto)
                     
                     try:
-                        cursor_sql.execute(query_multiple, (nit, tipodcto))
-                        resultados_multiple = cursor_sql.fetchall()
-                        
-                        if resultados_multiple:
-                            print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
-                            requieren_manual += 1
-                            # Convertir a lista de diccionarios para JSON
-                            opciones_list = []
-                            for resultado in resultados_multiple:
-                                opciones_list.append({
-                                    "nrodcto": str(resultado[0]),
-                                    "passwordin": str(resultado[1]),
-                                    "bruto": float(resultado[2]) if resultado[2] else 0,
-                                    "ivabruto": float(resultado[3]) if resultado[3] else 0,
-                                    "vlretfte": float(resultado[4]) if resultado[4] else 0,
-                                    "vretica": float(resultado[5]) if resultado[5] else 0,
-                                    "vreteniva": float(resultado[6]) if resultado[6] else 0,
-                                    "subtotal": float(resultado[7]) if resultado[7] else 0,
-                                    "total": float(resultado[8]) if resultado[8] else 0,
-                                    "dctoprv": str(resultado[9]) if resultado[9] else ""
-                                })
-                            ofimatica_data[factura_id] = {
-                                "opciones_multiple": opciones_list,
-                                "auto_cargado": False
-                            }
-                        else:
-                            print(f"  ✗ No se encontraron registros para factura {factura_id}")
-                            requieren_manual += 1
-                            ofimatica_data[factura_id] = {
-                                "auto_cargado": False,
-                                "sin_registros": True
+                    cursor_sql.execute(query_multiple, (nit, tipodcto))
+                    resultados_multiple = cursor_sql.fetchall()
+                    
+                    if resultados_multiple:
+                        print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
+                        requieren_manual += 1
+                        # Convertir a lista de diccionarios para JSON
+                        opciones_list = []
+                        for resultado in resultados_multiple:
+                            opciones_list.append({
+                                "nrodcto": str(resultado[0]),
+                                "passwordin": str(resultado[1]),
+                                "bruto": float(resultado[2]) if resultado[2] else 0,
+                                "ivabruto": float(resultado[3]) if resultado[3] else 0,
+                                "vlretfte": float(resultado[4]) if resultado[4] else 0,
+                                "vretica": float(resultado[5]) if resultado[5] else 0,
+                                "vreteniva": float(resultado[6]) if resultado[6] else 0,
+                                "subtotal": float(resultado[7]) if resultado[7] else 0,
+                                "total": float(resultado[8]) if resultado[8] else 0,
+                                "dctoprv": str(resultado[9]) if resultado[9] else ""
+                            })
+                        ofimatica_data[factura_id] = {
+                            "opciones_multiple": opciones_list,
+                            "auto_cargado": False
+                        }
+                    else:
+                        print(f"  ✗ No se encontraron registros para factura {factura_id}")
+                        requieren_manual += 1
+                        ofimatica_data[factura_id] = {
+                            "auto_cargado": False,
+                            "sin_registros": True
                             }
                     except Exception as e:
                         print(f"  ⚠ Error en búsqueda de opciones múltiples para factura {factura_id}: {e}")
@@ -3449,7 +3472,7 @@ def facturas_servicios():
         print(f"✅ /facturas_resumen -> Facturas encontradas: {len(facturas)}")
         if facturas and len(facturas) > 0:
             print(f"/facturas_resumen -> Primera fila (muestra): ID={facturas[0][-1]}, NIT={facturas[0][0]}")
-        
+
     except Exception as e:
         print(f"❌ /facturas_resumen -> Error en consulta: {e}")
         flash(f"Error al consultar las facturas: {str(e)}", "error")
@@ -3641,8 +3664,8 @@ def gestion_inicial():
         
     try:
         # Consultar las órdenes de compra para mostrar en la plantilla
-        cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
-        ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
+    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
+    ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
     except Exception as e:
         print(f"Error consultando órdenes de compra: {e}")
         flash(f"Error al consultar las órdenes de compra: {str(e)}", "error")
@@ -3810,6 +3833,86 @@ def auditor():
 
 
 
+
+@app.route("/debug/automatizar_cm", methods=["GET", "POST"])
+@login_required
+def debug_automatizar_cm():
+    """Endpoint de debugging para probar automatización de documentos CM"""
+    if request.method == "POST":
+        factura_id = request.form.get("factura_id")
+        numero_factura = request.form.get("numero_factura")
+        nit = request.form.get("nit")
+        
+        if not factura_id or not numero_factura or not nit:
+            return jsonify({"error": "Faltan parámetros: factura_id, numero_factura, nit"}), 400
+        
+        try:
+            # Conectar a SQL Server
+            conn_sql = sql_server_connection()
+            cursor_sql = conn_sql.cursor()
+            
+            # Consulta para CM
+            query_cm = """
+                SELECT 
+                    NRODCTO, 
+                    PASSWORDIN, 
+                    BRUTO, 
+                    ISNULL(IVABRUTO, 0) AS IVABRUTO, 
+                    ISNULL(VLRETFTE, 0) AS VLRETFTE, 
+                    ISNULL(VRETICA, 0) AS VRETICA, 
+                    ISNULL(VRETENIVA, 0) AS VRETENIVA, 
+                    (BRUTO + ISNULL(IVABRUTO, 0)) AS SUBTOTAL, 
+                    ((BRUTO + ISNULL(IVABRUTO, 0)) - ISNULL(VLRETFTE, 0) - ISNULL(VRETICA, 0) - ISNULL(VRETENIVA, 0)) AS TOTAL
+                FROM TRADE
+                WHERE LTRIM(RTRIM(dctoprv)) = ? AND NIT = ? AND TIPODCTO = ? AND ORIGEN = 'COM'
+            """
+            
+            cursor_sql.execute(query_cm, (numero_factura, nit, 'CM'))
+            resultados = cursor_sql.fetchall()
+            
+            cursor_sql.close()
+            conn_sql.close()
+            
+            if resultados:
+                resultado = resultados[0]
+                return jsonify({
+                    "success": True,
+                    "encontrado": True,
+                    "datos": {
+                        "nrodcto": str(resultado[0]),
+                        "passwordin": str(resultado[1]),
+                        "bruto": float(resultado[2]) if resultado[2] else 0,
+                        "ivabruto": float(resultado[3]) if resultado[3] else 0,
+                        "subtotal": float(resultado[7]) if resultado[7] else 0,
+                        "total": float(resultado[8]) if resultado[8] else 0
+                    },
+                    "total_resultados": len(resultados)
+                })
+            else:
+                return jsonify({
+                    "success": True,
+                    "encontrado": False,
+                    "mensaje": f"No se encontraron resultados para dctoprv='{numero_factura}', NIT='{nit}', TIPODCTO='CM'"
+                })
+                
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    # GET: Mostrar formulario de prueba
+    return """
+    <html>
+    <head><title>Debug Automatización CM</title></head>
+    <body>
+        <h1>Debug Automatización CM</h1>
+        <form method="POST">
+            <label>Factura ID: <input type="text" name="factura_id" required></label><br>
+            <label>Número Factura (dctoprv): <input type="text" name="numero_factura" required></label><br>
+            <label>NIT: <input type="text" name="nit" required></label><br>
+            <button type="submit">Probar Consulta</button>
+        </form>
+    </body>
+    </html>
+    """
         
 @app.route("/logout")
 def logout():
