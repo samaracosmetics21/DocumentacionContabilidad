@@ -3277,24 +3277,50 @@ def tesoreria():
                     if isinstance(fecha, str):
                         # Intentar diferentes formatos de fecha comunes en SQL Server
                         fecha_limpia = fecha.strip()
-                        formatos_fecha = [
-                            '%Y-%m-%d',           # 2024-11-15
-                            '%Y-%m-%d %H:%M:%S', # 2024-11-15 10:30:00
-                            '%d/%m/%Y',          # 15/11/2024
-                            '%Y/%m/%d',          # 2024/11/15
-                            '%m/%d/%Y',          # 11/15/2024
-                            '%d-%m-%Y',          # 15-11-2024
-                        ]
-                        for fmt in formatos_fecha:
-                            try:
-                                fecha_parseada = datetime.strptime(fecha_limpia, fmt)
-                                break
-                            except:
-                                continue
-                        if not fecha_parseada:
-                            # Si no se puede parsear, usar fecha actual como fallback
-                            print(f"⚠️ No se pudo parsear fecha: {fecha}, usando fecha actual")
-                            fecha_parseada = datetime.now()
+                        
+                        # Intentar primero con dateutil.parser que es más flexible (maneja mayúsculas/minúsculas)
+                        try:
+                            from dateutil import parser
+                            fecha_parseada = parser.parse(fecha_limpia)
+                        except:
+                            # Si dateutil no está disponible o falla, intentar formatos específicos
+                            formatos_fecha = [
+                                '%b %d %Y %I:%M:%S %p',  # Dec 27 2024 12:00:00 AM (con segundos)
+                                '%b %d %Y %I:%M%p',      # Dec 27 2024 12:00AM (sin segundos)
+                                '%b %d %Y',              # Dec 27 2024 (sin hora)
+                                '%Y-%m-%d',              # 2024-11-15
+                                '%Y-%m-%d %H:%M:%S',     # 2024-11-15 10:30:00
+                                '%d/%m/%Y',              # 15/11/2024
+                                '%Y/%m/%d',              # 2024/11/15
+                                '%m/%d/%Y',              # 11/15/2024
+                                '%d-%m-%Y',              # 15-11-2024
+                            ]
+                            
+                            # Intentar con el string original y también con el mes en minúsculas
+                            fecha_parseada = None
+                            for fmt in formatos_fecha:
+                                try:
+                                    fecha_parseada = datetime.strptime(fecha_limpia, fmt)
+                                    break
+                                except:
+                                    # Intentar con el mes en minúsculas (para formatos con %b)
+                                    if '%b' in fmt:
+                                        try:
+                                            # Convertir el mes a minúsculas (ej: "Dec" -> "dec")
+                                            partes = fecha_limpia.split()
+                                            if len(partes) > 0:
+                                                partes[0] = partes[0].lower()
+                                                fecha_lower = ' '.join(partes)
+                                                fecha_parseada = datetime.strptime(fecha_lower, fmt)
+                                                break
+                                        except:
+                                            continue
+                                    continue
+                            
+                            if not fecha_parseada:
+                                # Si no se puede parsear, usar fecha actual como fallback
+                                print(f"⚠️ No se pudo parsear fecha: {fecha}, usando fecha actual")
+                                fecha_parseada = datetime.now()
                     elif hasattr(fecha, 'year') and hasattr(fecha, 'month'):
                         # Si ya es un objeto datetime
                         fecha_parseada = fecha
