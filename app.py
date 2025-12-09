@@ -1797,12 +1797,14 @@ def gestion_asignaciones():
             estado_actual = factura[1]
 
             if accion == "aprobar":
+                # Validar que la factura no esté ya aprobada
                 if estado_actual == 'Aprobado':
                     flash("La factura ya ha sido aprobada anteriormente.", "warning")
                     print("Advertencia: la factura ya estaba aprobada.")
                     return redirect("/asignaciones")
 
                 # Aprobar la factura y registrar la hora de aprobación
+                # Nota: Corregida indentación del bloque try-except (líneas 1806-1828)
                 try:
                     hora_actual = datetime.now()
                     print(f"Hora de aprobación: {hora_actual}")
@@ -2925,38 +2927,40 @@ def gestion_final():
                     
                     query_multiple = generar_consulta_multiple(tipodcto)
                     
+                    # Búsqueda de opciones múltiples para selección manual
+                    # Nota: Corregida indentación del bloque try-except (líneas 2928-2967)
                     try:
-                    cursor_sql.execute(query_multiple, (nit, tipodcto))
-                    resultados_multiple = cursor_sql.fetchall()
-                    
-                    if resultados_multiple:
-                        print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
-                        requieren_manual += 1
-                        # Convertir a lista de diccionarios para JSON
-                        opciones_list = []
-                        for resultado in resultados_multiple:
-                            opciones_list.append({
-                                "nrodcto": str(resultado[0]),
-                                "passwordin": str(resultado[1]),
-                                "bruto": float(resultado[2]) if resultado[2] else 0,
-                                "ivabruto": float(resultado[3]) if resultado[3] else 0,
-                                "vlretfte": float(resultado[4]) if resultado[4] else 0,
-                                "vretica": float(resultado[5]) if resultado[5] else 0,
-                                "vreteniva": float(resultado[6]) if resultado[6] else 0,
-                                "subtotal": float(resultado[7]) if resultado[7] else 0,
-                                "total": float(resultado[8]) if resultado[8] else 0,
-                                "dctoprv": str(resultado[9]) if resultado[9] else ""
-                            })
-                        ofimatica_data[factura_id] = {
-                            "opciones_multiple": opciones_list,
-                            "auto_cargado": False
-                        }
-                    else:
-                        print(f"  ✗ No se encontraron registros para factura {factura_id}")
-                        requieren_manual += 1
-                        ofimatica_data[factura_id] = {
-                            "auto_cargado": False,
-                            "sin_registros": True
+                        cursor_sql.execute(query_multiple, (nit, tipodcto))
+                        resultados_multiple = cursor_sql.fetchall()
+                        
+                        if resultados_multiple:
+                            print(f"  ⚠ Encontrados {len(resultados_multiple)} registros para selección manual")
+                            requieren_manual += 1
+                            # Convertir a lista de diccionarios para JSON
+                            opciones_list = []
+                            for resultado in resultados_multiple:
+                                opciones_list.append({
+                                    "nrodcto": str(resultado[0]),
+                                    "passwordin": str(resultado[1]),
+                                    "bruto": float(resultado[2]) if resultado[2] else 0,
+                                    "ivabruto": float(resultado[3]) if resultado[3] else 0,
+                                    "vlretfte": float(resultado[4]) if resultado[4] else 0,
+                                    "vretica": float(resultado[5]) if resultado[5] else 0,
+                                    "vreteniva": float(resultado[6]) if resultado[6] else 0,
+                                    "subtotal": float(resultado[7]) if resultado[7] else 0,
+                                    "total": float(resultado[8]) if resultado[8] else 0,
+                                    "dctoprv": str(resultado[9]) if resultado[9] else ""
+                                })
+                            ofimatica_data[factura_id] = {
+                                "opciones_multiple": opciones_list,
+                                "auto_cargado": False
+                            }
+                        else:
+                            print(f"  ✗ No se encontraron registros para factura {factura_id}")
+                            requieren_manual += 1
+                            ofimatica_data[factura_id] = {
+                                "auto_cargado": False,
+                                "sin_registros": True
                             }
                     except Exception as e:
                         print(f"  ⚠ Error en búsqueda de opciones múltiples para factura {factura_id}: {e}")
@@ -3662,10 +3666,11 @@ def gestion_inicial():
             flash(f"Error al guardar en PostgreSQL: {str(e)}", "error")
             return redirect(request.url)
         
+    # Consultar las órdenes de compra para mostrar en la plantilla
+    # Nota: Corregida indentación del bloque try-except-finally (líneas 3665-3678)
     try:
-        # Consultar las órdenes de compra para mostrar en la plantilla
-    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
-    ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
+        cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
+        ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
     except Exception as e:
         print(f"Error consultando órdenes de compra: {e}")
         flash(f"Error al consultar las órdenes de compra: {str(e)}", "error")
