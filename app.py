@@ -588,9 +588,6 @@ def actualizar_factura():
             else:
                 clasificacion_texto = "Facturas"
         
-        # Convertir nrodcto_oc a entero si tiene valor, sino None
-        nrodcto_oc_value = int(nrodcto_oc) if nrodcto_oc and nrodcto_oc.isdigit() else None
-
         if not factura_id:
             return jsonify({"error": "ID de factura no proporcionado"}), 400
 
@@ -618,6 +615,18 @@ def actualizar_factura():
         # Actualizar en PostgreSQL
         conn_pg = postgres_connection()
         cursor_pg = conn_pg.cursor()
+        
+        # Recuperar el valor actual de nrodcto_oc desde la base de datos
+        cursor_pg.execute("SELECT nrodcto_oc FROM facturas WHERE id = %s", (factura_id,))
+        row_actual = cursor_pg.fetchone()
+        nrodcto_oc_actual = row_actual[0] if row_actual and row_actual[0] else None
+        
+        # Si se proporcionó un nuevo valor en el formulario, usarlo; sino, mantener el actual
+        if nrodcto_oc and nrodcto_oc.strip():
+            nrodcto_oc_value = nrodcto_oc.strip()
+        else:
+            # Mantener el valor actual o usar valor por defecto si no existe (NOT NULL constraint)
+            nrodcto_oc_value = nrodcto_oc_actual if nrodcto_oc_actual else 'DEFAULT_NRODCTO'
 
         query = """
             UPDATE facturas
