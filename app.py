@@ -575,7 +575,18 @@ def actualizar_factura():
         observaciones = request.form.get("observaciones")
         archivo = request.files.get("archivo")
         nrodcto_oc = request.form.get("nrodcto_oc", "").strip()
-        clasificacion_texto = "Facturas" if clasificacion == "1" else "Servicios"
+        
+        # Mapear valor numérico a texto de clasificación
+        if clasificacion == "1":
+            clasificacion_texto = "Facturas"
+        elif clasificacion == "2":
+            clasificacion_texto = "Servicios"
+        else:
+            # Fallback: intentar detectar por texto (compatibilidad con datos antiguos)
+            if clasificacion and "Servicios" in clasificacion:
+                clasificacion_texto = "Servicios"
+            else:
+                clasificacion_texto = "Facturas"
         
         # Convertir nrodcto_oc a entero si tiene valor, sino None
         nrodcto_oc_value = int(nrodcto_oc) if nrodcto_oc and nrodcto_oc.isdigit() else None
@@ -1524,7 +1535,7 @@ def cambiar_password():
         # Generar hash de la nueva contraseña
         nuevo_password_hash = generate_password_hash(password_nueva)
         
-        # Actualizar la contraseña en la base de datos
+        # Actualizar la contraseña en la base de datos 1
         cursor.execute("""
             UPDATE usuarios 
             SET password_hash = %s 

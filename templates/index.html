@@ -92,13 +92,7 @@
                             <option value="2">Facturas Servicios (compras)</option>
                         </select>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="edit_nrodcto_oc" class="form-label">NRODCTO OC</label>
-                        <input type="number" id="edit_nrodcto_oc" name="nrodcto_oc" class="form-control" placeholder="Número de documento OC (opcional)">
-                        <small class="form-text text-muted">Ingrese el número de documento de orden de compra</small>
-                    </div>
-                    
+        
                     <div class="mb-3">
                         <label for="edit_archivo" class="form-label">Actualizar Archivo (opcional)</label>
                         <input type="file" id="edit_archivo" name="archivo" class="form-control">
@@ -249,8 +243,16 @@
                     document.getElementById("edit_nombre").value = data.nombre;
                     document.getElementById("edit_numero_factura").value = data.numero_factura;
                     document.getElementById("edit_fecha").value = data.fecha_seleccionada;
-                    document.getElementById("edit_clasificacion").value = data.clasificacion;
-                    document.getElementById("edit_nrodcto_oc").value = data.nrodcto_oc || '';
+                    
+                    // Mapear clasificación de BD ("Facturas"/"Servicios") a valores del select ("1"/"2")
+                    let clasificacionValue = "1"; // Por defecto Facturas
+                    if (data.clasificacion === "Servicios" || data.clasificacion === "Facturas Servicios (compras)") {
+                        clasificacionValue = "2";
+                    } else if (data.clasificacion === "Facturas" || data.clasificacion === "Facturas M.P (producción)") {
+                        clasificacionValue = "1";
+                    }
+                    document.getElementById("edit_clasificacion").value = clasificacionValue;
+                    
                     document.getElementById("edit_observaciones").value = data.observaciones_regis;
 
                     document.getElementById("formulario-edicion").style.display = "block";
@@ -305,18 +307,9 @@
 
             const formData = new FormData(this);
 
+            // Enviar el valor numérico directamente ("1" o "2") al backend
             const clasificacionValor = this.querySelector("#edit_clasificacion").value;
-            let clasificacionTexto = "";
-
-            if (clasificacionValor === "1") {
-                clasificacionTexto = "Facturas M.P (producción)";
-            } else if (clasificacionValor === "2") {
-                clasificacionTexto = "Facturas Servicios (compras)";
-            } else {
-                clasificacionTexto = clasificacionValor;
-            }
-
-            formData.set("clasificacion", clasificacionTexto);
+            formData.set("clasificacion", clasificacionValor);
 
             fetch("/actualizar_factura", {
                 method: "POST",
