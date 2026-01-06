@@ -1535,7 +1535,7 @@ def cambiar_password():
         user_id = user[0]
         password_hash_actual = user[1]
         
-        # Verificar que la contraseña actual sea correcta
+        # Verificar que la contraseña actual sea correcta 1
         if not check_password_hash(password_hash_actual, password_actual):
             cursor.close()
             conn_pg.close()
@@ -3793,7 +3793,7 @@ def gestion_inicial():
     # Consultar las órdenes de compra para mostrar en la plantilla
     # Nota: Corregida indentación del bloque try-except-finally (líneas 3665-3678)
     try:
-        cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc FROM ordenes_compras ORDER BY hora_registro_oc DESC")
+        cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, hora_registro_oc, estado FROM ordenes_compras ORDER BY hora_registro_oc DESC")
         ordenes = [dict(zip([d[0] for d in cursor_pg.description], row)) for row in cursor_pg.fetchall()]
     except Exception as e:
         print(f"Error consultando órdenes de compra: {e}")
@@ -3820,7 +3820,7 @@ def get_orden():
     conn_pg = postgres_connection()
     cursor_pg = conn_pg.cursor()
 
-    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc FROM ordenes_compras WHERE id=%s", (id_oc,))
+    cursor_pg.execute("SELECT id, nrodcto_oc, nit_oc, nombre_cliente_oc, estado FROM ordenes_compras WHERE id=%s", (id_oc,))
     row = cursor_pg.fetchone()
     if not row:
         return jsonify(error="Orden no encontrada"), 404
@@ -3832,6 +3832,7 @@ def editar_orden():
     id_oc = request.form.get("id_oc")
     nit = request.form.get("nit_oc").strip()
     nombre = request.form.get("nombre_cliente_oc").strip()
+    estado = request.form.get("estado", "Pendiente").strip()
     archivo = request.files.get("orden_compra")
 
     conn_pg = postgres_connection()
@@ -3845,11 +3846,11 @@ def editar_orden():
         archivo.save(archivo_path)
         ruta_relativa = os.path.relpath(archivo_path, app.config["UPLOAD_FOLDER"])
         ruta_relativa = ruta_relativa.replace("static/", "")
-        cursor_pg.execute("UPDATE ordenes_compras SET nit_oc=%s, nombre_cliente_oc=%s, archivo_path_oc=%s WHERE id=%s",
-                          (nit, nombre, ruta_relativa, id_oc))
+        cursor_pg.execute("UPDATE ordenes_compras SET nit_oc=%s, nombre_cliente_oc=%s, archivo_path_oc=%s, estado=%s WHERE id=%s",
+                          (nit, nombre, ruta_relativa, estado, id_oc))
     else:
-        cursor_pg.execute("UPDATE ordenes_compras SET nit_oc=%s, nombre_cliente_oc=%s WHERE id=%s",
-                          (nit, nombre, id_oc))
+        cursor_pg.execute("UPDATE ordenes_compras SET nit_oc=%s, nombre_cliente_oc=%s, estado=%s WHERE id=%s",
+                          (nit, nombre, estado, id_oc))
     conn_pg.commit()
     flash("Orden actualizada exitosamente", "success")
     return redirect(url_for('gestion_inicial'))

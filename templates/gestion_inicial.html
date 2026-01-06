@@ -108,6 +108,13 @@
                 <label class="form-label">Actualizar PDF (opcional)</label>
                 <input type="file" name="orden_compra" class="form-control" accept=".pdf">
             </div>
+            <div class="mb-3">
+                <label class="form-label">Estado</label>
+                <select id="edit_estado" name="estado" class="form-select" required>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Cerrada">Cerrada</option>
+                </select>
+            </div>
             <button type="submit" class="btn btn-warning">Actualizar</button>
         </form>
     </div>
@@ -123,6 +130,7 @@
             <th>NIT</th>
             <th>Cliente</th>
             <th>Fecha Reg.</th>
+            <th>Estado</th>
             <th>Acción</th>
         </tr>
         </thead>
@@ -134,6 +142,17 @@
             <td>{{ oc.nit_oc }}</td>
             <td>{{ oc.nombre_cliente_oc }}</td>
             <td>{{ oc.hora_registro_oc.strftime("%Y-%m-%d %H:%M") }}</td>
+            <td>
+                {% if oc.estado %}
+                    {% if oc.estado == 'Cerrada' %}
+                        <span class="badge bg-danger">{{ oc.estado }}</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">{{ oc.estado }}</span>
+                    {% endif %}
+                {% else %}
+                    <span class="badge bg-secondary">Sin estado</span>
+                {% endif %}
+            </td>
             <td><button class="btn btn-sm btn-secondary" onclick="loadEdicion({{ oc.id }})">Editar</button></td>
         </tr>
         {% endfor %}
@@ -210,6 +229,7 @@
             $('#edit_nrodcto').val(data.nrodcto_oc);
             $('#edit_nit').val(data.nit_oc);
             $('#edit_nombre_cliente').val(data.nombre_cliente_oc);
+            $('#edit_estado').val(data.estado || 'Pendiente');
             $('#tab-edicion').click(); // Cambia a la pestaña de edición
         });
     }
