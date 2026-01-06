@@ -1159,10 +1159,10 @@ def gestion_bodega():
                 elif accion.startswith("cerrar_orden_"):
                     orden_id = accion.split("_")[2]  # Obtener el ID de la orden de compra
 
-                    # Cerrar la orden de compra (actualizar estado a 'Aprobado')
+                    # Cerrar la orden de compra (actualizar estado a 'Cerrada')
                     cursor_pg.execute("""
                         UPDATE ordenes_compras
-                        SET estado = 'Aprobado'
+                        SET estado = 'Cerrada'
                         WHERE id = %s
                     """, (orden_id,))
                     conn_pg.commit()
