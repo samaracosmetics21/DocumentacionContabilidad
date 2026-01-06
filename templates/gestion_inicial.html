@@ -144,14 +144,12 @@
             <td>{{ oc.hora_registro_oc.strftime("%Y-%m-%d %H:%M") }}</td>
             <td>
                 {% if oc.estado %}
-                    {% if oc.estado == 'Aprobado' %}
-                        <span class="badge bg-success text-white">{{ oc.estado }}</span>
+                    {% if oc.estado == 'Cerrada' %}
+                        <span class="badge bg-secondary text-white">{{ oc.estado }}</span>
                     {% elif oc.estado == 'Pendiente' %}
                         <span class="badge bg-danger text-white">{{ oc.estado }}</span>
-                    {% elif oc.estado == 'Cerrada' %}
-                        <span class="badge bg-secondary text-white">{{ oc.estado }}</span>
                     {% else %}
-                        <span class="badge bg-warning text-dark">{{ oc.estado }}</span>
+                        <span class="badge bg-secondary text-white">{{ oc.estado }}</span>
                     {% endif %}
                 {% else %}
                     <span class="badge bg-secondary text-white">Sin estado</span>
