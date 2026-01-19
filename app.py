@@ -1714,7 +1714,8 @@ def gestion_servicios():
                 clasificacion, 
                 archivo_path, 
                 estado, 
-                nombre 
+                nombre,
+                observaciones_asignacion
             FROM facturas
             WHERE clasificacion = 'Servicios' AND estado = 'Pendiente'
             ORDER BY fecha_seleccionada ASC
