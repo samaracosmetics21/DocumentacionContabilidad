@@ -1823,6 +1823,9 @@ def gestion_asignaciones():
                     print("Advertencia: la factura ya estaba aprobada.")
                     return redirect("/asignaciones")
 
+                # Obtener observaciones (opcional para aprobación)
+                observaciones_asignacion = request.form.get("observaciones_asignacion", "").strip()
+
                 # Aprobar la factura y registrar la hora de aprobación
                 # Nota: Corregida indentación del bloque try-except (líneas 1806-1828)
                 try:
@@ -1832,9 +1835,10 @@ def gestion_asignaciones():
                     cursor.execute("""
                         UPDATE facturas
                         SET estado_usuario_asignado = 'Aprobado',
-                            hora_aprobacion_asignado = %s
+                            hora_aprobacion_asignado = %s,
+                            observaciones_asignacion = %s
                         WHERE id = %s AND usuario_asignado_servicios = %s
-                    """, (hora_actual, factura_id, usuario_actual_id))
+                    """, (hora_actual, observaciones_asignacion if observaciones_asignacion else None, factura_id, usuario_actual_id))
                     conn_pg.commit()
                     print(f"Factura aprobada. Filas afectadas: {cursor.rowcount}")
 
@@ -1850,6 +1854,15 @@ def gestion_asignaciones():
                     flash(f"Error aprobando factura: {str(e)}", "error")
 
             elif accion == "rechazar":
+                # Obtener observaciones (obligatorio para rechazo)
+                observaciones_asignacion = request.form.get("observaciones_asignacion", "").strip()
+                
+                # Validar que las observaciones estén presentes para rechazo
+                if not observaciones_asignacion:
+                    flash("Las observaciones son obligatorias al rechazar una factura. Por favor, indica el motivo del rechazo.", "error")
+                    print("Error: observaciones no proporcionadas para rechazo.")
+                    return redirect("/asignaciones")
+
                 # Revertir la aprobación y liberar la factura para reasignación
                 try:
                     cursor.execute("""
@@ -1859,9 +1872,10 @@ def gestion_asignaciones():
                             usuario_asignado_servicios = NULL,
                             estado = 'Pendiente',
                             hora_aprobacion = NULL,
-                            aprobado_servicios = NULL
+                            aprobado_servicios = NULL,
+                            observaciones_asignacion = %s
                         WHERE id = %s AND usuario_asignado_servicios = %s
-                    """, (factura_id, usuario_actual_id))
+                    """, (observaciones_asignacion, factura_id, usuario_actual_id))
                     conn_pg.commit()
                     print(f"Factura rechazada. Filas afectadas: {cursor.rowcount}")
 
@@ -1889,7 +1903,8 @@ def gestion_asignaciones():
                 estado_usuario_asignado, 
                 estado_usuario_asignado, 
                 TO_CHAR(hora_aprobacion_asignado, 'YYYY-MM-DD HH24:MI:SS') AS hora_aprobacion_asignado, 
-                nombre
+                nombre,
+                observaciones_asignacion
             FROM facturas
             WHERE usuario_asignado_servicios = %s
             ORDER BY 

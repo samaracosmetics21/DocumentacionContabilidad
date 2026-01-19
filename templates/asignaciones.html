@@ -170,6 +170,7 @@
                     <th>Factura</th>
                     <th>Estado Asignado</th>
                     <th>Hora de Aprobación</th>
+                    <th>Observaciones</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -204,23 +205,22 @@
                         {% endif %}
                     </td>
                     <td>
+                        {% if factura[10] %}
+                            <small class="text-muted">{{ factura[10] }}</small>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
                         <div class="d-flex flex-column flex-lg-row gap-2">
                             {% if factura[7] != 'Aprobado' %}
-                            <form method="POST" action="/asignaciones" class="flex-fill">
-                                <input type="hidden" name="factura_id" value="{{ factura[0] }}">
-                                <input type="hidden" name="accion" value="aprobar">
-                                <button type="submit" class="btn btn-success btn-sm w-100" onclick="return confirmarAprobacion('{{ factura[2] }}');">
-                                    <i class="fas fa-check-circle me-1"></i> Aprobar
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-success btn-sm w-100" onclick="abrirModalAprobacion({{ factura[0] }}, '{{ factura[2] }}');">
+                                <i class="fas fa-check-circle me-1"></i> Aprobar
+                            </button>
                             {% endif %}
-                            <form method="POST" action="/asignaciones" class="flex-fill">
-                                <input type="hidden" name="factura_id" value="{{ factura[0] }}">
-                                <input type="hidden" name="accion" value="rechazar">
-                                <button type="submit" class="btn btn-danger btn-sm w-100" onclick="return confirmarRechazo('{{ factura[2] }}');">
-                                    <i class="fas fa-undo me-1"></i> Rechazar
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="abrirModalRechazo({{ factura[0] }}, '{{ factura[2] }}');">
+                                <i class="fas fa-undo me-1"></i> Rechazar
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -232,6 +232,62 @@
             <strong>No hay facturas asignadas pendientes de aprobación.</strong>
         </div>
     {% endif %}
+
+    <!-- Modal para Aprobar -->
+    <div class="modal fade" id="modalAprobar" tabindex="-1" aria-labelledby="modalAprobarLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAprobarLabel">Aprobar Factura</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="/asignaciones" id="formAprobar">
+                    <div class="modal-body">
+                        <input type="hidden" name="factura_id" id="aprobar_factura_id">
+                        <input type="hidden" name="accion" value="aprobar">
+                        <p>¿Deseas aprobar la factura <strong id="aprobar_numero_factura"></strong>?</p>
+                        <div class="mb-3">
+                            <label for="observaciones_aprobar" class="form-label">Observaciones (opcional)</label>
+                            <textarea class="form-control" id="observaciones_aprobar" name="observaciones_asignacion" rows="3" placeholder="Ingrese observaciones sobre la aprobación..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Confirmar Aprobación</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Rechazar -->
+    <div class="modal fade" id="modalRechazar" tabindex="-1" aria-labelledby="modalRechazarLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalRechazarLabel">Rechazar Factura</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="/asignaciones" id="formRechazar">
+                    <div class="modal-body">
+                        <input type="hidden" name="factura_id" id="rechazar_factura_id">
+                        <input type="hidden" name="accion" value="rechazar">
+                        <p>¿Deseas rechazar y liberar la factura <strong id="rechazar_numero_factura"></strong>?</p>
+                        <p class="text-muted"><small>Esta acción la devolverá al equipo de Contabilidad.</small></p>
+                        <div class="mb-3">
+                            <label for="observaciones_rechazar" class="form-label">Observaciones <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="observaciones_rechazar" name="observaciones_asignacion" rows="3" required placeholder="Ingrese el motivo del rechazo..."></textarea>
+                            <small class="form-text text-muted">Las observaciones son obligatorias para rechazar una factura.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Confirmar Rechazo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -291,7 +347,7 @@
                     noResultsRow = document.createElement('tr');
                     noResultsRow.id = 'noResultsRow';
                     noResultsRow.innerHTML = `
-                        <td colspan="10" class="text-center py-4">
+                        <td colspan="11" class="text-center py-4">
                             <div class="alert alert-warning mb-0">
                                 <i class="fas fa-search me-2"></i>
                                 No se encontraron resultados para "${searchInput.value}"
@@ -333,12 +389,20 @@
             filterRows();
         });
 
-        function confirmarAprobacion(numeroFactura) {
-            return confirm(`¿Deseas aprobar la factura ${numeroFactura}?`);
+        function abrirModalAprobacion(facturaId, numeroFactura) {
+            document.getElementById('aprobar_factura_id').value = facturaId;
+            document.getElementById('aprobar_numero_factura').textContent = numeroFactura;
+            document.getElementById('observaciones_aprobar').value = '';
+            var modal = new bootstrap.Modal(document.getElementById('modalAprobar'));
+            modal.show();
         }
 
-        function confirmarRechazo(numeroFactura) {
-            return confirm(`¿Deseas rechazar y liberar la factura ${numeroFactura}? Esta acción la devolverá al equipo de Contabilidad.`);
+        function abrirModalRechazo(facturaId, numeroFactura) {
+            document.getElementById('rechazar_factura_id').value = facturaId;
+            document.getElementById('rechazar_numero_factura').textContent = numeroFactura;
+            document.getElementById('observaciones_rechazar').value = '';
+            var modal = new bootstrap.Modal(document.getElementById('modalRechazar'));
+            modal.show();
         }
     </script>
 {% endblock %}
