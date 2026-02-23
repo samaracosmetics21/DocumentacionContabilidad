@@ -6,7 +6,7 @@ from psycopg2 import OperationalError
 def sql_server_connection():
     conn = pyodbc.connect(
         "DRIVER={ODBC Driver 17 for SQL Server};"
-        "SERVER=10.1.200.20;"
+        "SERVER=10.1.200.5;"
         "DATABASE=SAMARACOSMETICS;"
         "UID=SA;"
         "PWD=ofima.sql10"
