@@ -13,6 +13,8 @@ from flask import jsonify
 import decimal
 import json
 from email_config import enviar_correo_asignacion
+from automatizar_cm import automatizar_documentos_cm
+from automatizar_fr import automatizar_documentos_fr
 
 
 app = Flask(__name__)
@@ -1204,7 +1206,7 @@ def gestion_bodega():
             FROM trade
             WHERE origen = 'COM' 
             AND TIPODCTO = 'OC' 
-            AND TRIM(autorizpor) = 'NCARDONA' OR TRIM(autorizpor) = 'BMONTOYA' OR TRIM(autorizpor) = 'MCARDONA' OR TRIM(autorizpor) = 'DESTRADA' OR TRIM(autorizpor) = 'ACONTABLE'
+            AND RTRIM(LTRIM(autorizpor)) IN ('NCARDONA', 'BMONTOYA', 'MCARDONA', 'DESTRADA', 'ACONTABLE')
         """)
         ordenes_aprobadas_sql = cursor_sql.fetchall()
 
@@ -2538,6 +2540,17 @@ def gestion_final():
             flash("No tienes permisos para acceder a esta funcionalidad.", "error")
             print("Error: usuario no pertenece al grupo Contabilidad.")
             return redirect("/")
+
+        # Automatización batch CM y FR solo al cargar/recargar la página (GET)
+        if request.method == "GET":
+            try:
+                print("Ejecutando automatizar_documentos_cm (carga de página)...")
+                automatizar_documentos_cm()
+                print("Ejecutando automatizar_documentos_fr (carga de página)...")
+                automatizar_documentos_fr()
+            except Exception as e_auto:
+                print(f"Error en automatización CM/FR al cargar página: {e_auto}")
+                flash(f"Advertencia en automatización CM/FR: {e_auto}", "warning")
 
         # Obtener las facturas aprobadas
         print("Consultando facturas aprobadas...")
